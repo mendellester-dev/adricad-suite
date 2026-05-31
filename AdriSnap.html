@@ -1,0 +1,3053 @@
+<!DOCTYPE html>
+<!-- saved from url=(0021)https://adrisnap.com/ -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AdriSnap — Block Assembly</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0c0b0a;--panel:#131210;--border:#222018;--border2:#302e28;
+  --ink:#ede8e0;--muted:#6a6458;--soft:#a09888;
+  --amber:#d4a060;--amber2:#b88840;--amberDim:#2a1e08;
+  --pipe:#3a6898;--duct:#b85820;--elec:#70a020;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif}
+/* ── Suite bar (mirrors AdriCad) ────────────────── */
+.suite-bar{position:fixed;top:0;left:0;right:0;height:44px;z-index:200;
+  background:#1a2214;display:flex;align-items:center;padding:0 10px 0 14px;gap:0;
+  border-bottom:1px solid rgba(255,255,255,.08)}
+.suite-brand{font-family:'Instrument Serif',serif;font-size:15px;color:#c8d8a8;
+  letter-spacing:.01em;margin-right:10px;white-space:nowrap}
+.suite-brand em{font-style:italic;color:#8ab840}
+.suite-tabs{display:flex;gap:2px}
+.stab{height:26px;padding:0 13px;border-radius:4px;border:none;
+  background:transparent;color:#6a8860;font-family:'DM Mono',monospace;font-size:10px;
+  font-weight:500;letter-spacing:.06em;cursor:pointer;text-decoration:none;
+  display:inline-flex;align-items:center;transition:all .15s}
+.stab:hover{color:#b8d098;background:rgba(255,255,255,.06)}
+.stab.active{background:#4e7818;color:#ffffff;box-shadow:0 1px 4px rgba(0,0,0,.3);pointer-events:none}
+.snap-mid{flex:1;display:flex;align-items:center;gap:8px;padding:0 12px}
+/* Project area — mirrors AdriCad */
+.proj-area{display:flex;align-items:center;gap:7px;padding-left:12px;
+  border-left:1px solid rgba(255,255,255,.08)}
+.proj-dot{width:7px;height:7px;border-radius:50%;background:#3a4a2c;flex-shrink:0;
+  transition:background .3s}
+.proj-dot.saved{background:#8ab840}
+.proj-dot.dirty{background:#e8b840}
+.proj-select{height:26px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
+  border-radius:4px;color:#c8d8a8;font-family:'DM Mono',monospace;font-size:10px;
+  padding:0 8px;cursor:pointer;outline:none;min-width:120px;max-width:200px}
+.proj-select:focus{border-color:#8ab840}
+.proj-select option{background:#1a2214;color:#c8d8a8}
+.suite-right{display:flex;align-items:center;gap:6px}
+.suite-rtab{height:26px;padding:0 12px;border-radius:4px;border:1px solid rgba(255,255,255,.14);
+  background:transparent;color:#8aa880;font-family:'DM Mono',monospace;font-size:9px;
+  letter-spacing:.07em;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;
+  transition:all .15s}
+.suite-rtab:hover{color:#c8e098;border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.06)}
+.suite-rtab.login{background:rgba(138,184,64,.18);border-color:rgba(138,184,64,.35);color:#a8d068}
+.suite-rtab.login:hover{background:rgba(138,184,64,.28);color:#c8e098}
+.suite-ver{font-family:'DM Mono',monospace;font-size:9px;color:#3a4a2c;letter-spacing:.08em;margin-left:6px}
+.nlbl{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.1em}
+/* ── Login modal ────────────────────────────────── */
+#loginModal{position:fixed;inset:0;z-index:400;display:none;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.65);backdrop-filter:blur(4px)}
+#loginModal.open{display:flex}
+.lm-card{background:#141c10;border:1px solid #2a3a1e;border-radius:8px;
+  padding:28px 28px 22px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.lm-title{font-family:'Instrument Serif',serif;font-size:22px;color:#d0dab8;font-style:italic;margin-bottom:4px}
+.lm-sub{font-size:10px;color:#5a7848;font-family:'DM Mono',monospace;letter-spacing:.1em;margin-bottom:20px}
+.lm-google{width:100%;height:42px;border-radius:6px;border:1px solid #304428;background:#1e2c18;
+  color:#c8d8a8;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:10px;transition:all .15s;margin-bottom:10px}
+.lm-google:hover{background:#253318;border-color:#4a6030;color:#e0eec0}
+.lm-google svg{flex-shrink:0}
+.lm-divider{text-align:center;font-size:9px;color:#3a4a30;font-family:'DM Mono',monospace;
+  letter-spacing:.12em;margin:10px 0}
+.lm-email{width:100%;height:38px;background:#0d1409;border:1px solid #253018;border-radius:4px;
+  color:#c8d8a8;font-family:'DM Mono',monospace;font-size:11px;padding:0 10px;outline:none;box-sizing:border-box}
+.lm-email:focus{border-color:#4a7020}
+.lm-pw{width:100%;height:38px;background:#0d1409;border:1px solid #253018;border-radius:4px;
+  color:#c8d8a8;font-family:'DM Mono',monospace;font-size:11px;padding:0 10px;
+  outline:none;box-sizing:border-box;margin-top:6px}
+.lm-pw:focus{border-color:#4a7020}
+.lm-submit{width:100%;height:40px;background:#5a8830;border:none;border-radius:4px;
+  color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;
+  margin-top:12px;transition:background .15s}
+.lm-submit:hover{background:#4a7020}
+.lm-msg{font-size:9px;font-family:'DM Mono',monospace;min-height:14px;margin-top:6px;letter-spacing:.04em}
+.lm-close{position:absolute;top:12px;right:14px;background:none;border:none;
+  color:var(--muted);font-size:16px;cursor:pointer;line-height:1}
+.lm-card{position:relative}
+select{background:var(--panel);border:1px solid var(--border2);color:var(--ink);
+  font-size:11px;padding:5px 8px;border-radius:3px;cursor:pointer;outline:none}
+select option,select optgroup{background:#1a1814}
+#cv-wrap{position:fixed;top:44px;left:0;right:0;bottom:80px}
+canvas{display:block;width:100%!important;height:100%!important}
+#styleDeck{position:fixed;top:56px;left:18px;right:18px;z-index:150;display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px;pointer-events:auto}
+.style-card{background:#131210e8;border:1px solid var(--border2);border-radius:5px;padding:8px 9px;
+  cursor:pointer;transition:transform .15s,border-color .15s,background .15s;min-width:0}
+.style-card:hover,.style-card.active{transform:translateY(-1px);border-color:var(--amber2);background:#18150f}
+.style-card strong{display:block;font-family:'Instrument Serif',serif;font-size:16px;color:#d8ceb4;
+  font-style:italic;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.style-card span{display:block;font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);
+  letter-spacing:.07em;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.swatches{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-top:7px}
+.sw{height:12px;border-radius:2px;border:1px solid rgba(255,255,255,.12)}
+
+/* ── Left column: city name + metrics + stage list ── */
+#infoCity{position:fixed;top:56px;left:18px;z-index:100;pointer-events:none}
+.ci-name{font-family:'Instrument Serif',serif;font-size:18px;color:#d8d0bc;font-style:italic}
+.ci-period{font-size:9px;color:var(--amber);letter-spacing:.08em;font-family:'DM Mono',monospace;margin-top:1px}
+
+#metrics{position:fixed;top:108px;left:18px;z-index:100;background:#131210e8;border:1px solid var(--border2);
+  border-radius:4px;padding:10px 12px;width:210px;pointer-events:none}
+.m-title{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.16em;font-family:'DM Mono',monospace;margin-bottom:7px}
+.m-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.m-cell{border:1px solid var(--border);background:#0f0e0c;padding:6px;border-radius:3px}
+.m-val{font-family:'DM Mono',monospace;font-size:13px;color:#d8ceb4;line-height:1}
+.m-lbl{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);margin-top:4px;letter-spacing:.06em}
+
+/* Stage list: fixed below metrics, scrollable, never reaches the bottom bar */
+#stageList{
+  position:fixed;top:242px;left:18px;z-index:100;pointer-events:auto;
+  width:226px;
+  max-height:calc(100vh - 262px - 80px);
+  overflow-y:auto;overflow-x:hidden;
+}
+#stageList::-webkit-scrollbar{width:2px}
+#stageList::-webkit-scrollbar-thumb{background:var(--border2)}
+.sl-item{display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:3px;
+  font-size:9.5px;color:var(--muted);margin-bottom:1px;
+  font-family:'DM Mono',monospace;letter-spacing:.03em;transition:all .15s;
+  cursor:pointer;pointer-events:auto;user-select:none}
+.sl-item:hover{background:rgba(255,255,255,.05);color:var(--soft)}
+.sl-item.active{color:var(--amber);background:var(--amberDim)}
+.sl-item.selected{color:var(--amber);background:rgba(212,160,96,.18);box-shadow:inset 2px 0 0 var(--amber)}
+.sl-item.done{color:#6a6055}
+.sl-item.done:hover{color:var(--soft)}
+.sl-dot{width:4px;height:4px;border-radius:50%;background:currentColor;flex-shrink:0}
+.sl-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── View tools: move to right of centre, clear of left panels ── */
+#viewTools{position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:120;
+  display:flex;align-items:center;gap:6px;background:#100f0dcc;border:1px solid var(--border2);
+  border-radius:4px;padding:5px;backdrop-filter:blur(10px)}
+.toolbtn{width:30px;height:26px;border:1px solid var(--border2);background:#15130f;color:var(--soft);
+  border-radius:3px;cursor:pointer;font-size:13px;line-height:1;transition:all .15s}
+.toolbtn:hover,.toolbtn.active{background:var(--amberDim);border-color:var(--amber2);color:var(--amber)}
+
+/* ── Game panel ── */
+#gamePanel{position:fixed;right:18px;bottom:100px;z-index:140;width:260px;background:#131210e8;
+  border:1px solid var(--border2);border-radius:5px;padding:12px;pointer-events:auto}
+.gp-kicker{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:.16em;text-transform:uppercase}
+.gp-title{font-family:'Instrument Serif',serif;font-size:19px;color:#d8ceb4;font-style:italic;margin-top:3px}
+.gp-text{font-size:11px;line-height:1.35;color:var(--soft);margin-top:7px}
+.gp-score{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.gp-score div{border:1px solid var(--border);background:#0f0e0c;border-radius:3px;padding:6px}
+.gp-score strong{display:block;font-family:'DM Mono',monospace;font-size:14px;color:var(--amber)}
+.gp-score span{display:block;font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);margin-top:3px}
+.gp-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.gp-actions .btn{padding:8px 9px;text-align:center}
+.gp-hint{font-family:'DM Mono',monospace;font-size:8.5px;color:var(--muted);line-height:1.45;margin-top:9px}
+.crew-chip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border2);border-radius:3px;
+  padding:3px 6px;margin-top:8px;font-family:'DM Mono',monospace;font-size:8px;color:var(--amber);background:var(--amberDim)}
+
+/* ── Info block (hover): top-right, below suite bar ── */
+#infoBlock{position:fixed;top:56px;right:18px;z-index:100;
+  background:#131210e8;border:1px solid var(--border2);padding:12px 14px;
+  border-radius:4px;min-width:195px;max-width:240px;pointer-events:none;transition:opacity .3s}
+.ib-cat{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.14em;
+  font-family:'DM Mono',monospace;margin-bottom:5px}
+.ib-name{font-size:14px;color:#d8ceb4;font-family:'Instrument Serif',serif;
+  font-style:italic;margin-bottom:10px;line-height:1.2}
+.ib-row{display:flex;justify-content:space-between;gap:16px;margin-bottom:4px;font-family:'DM Mono',monospace}
+.ib-k{font-size:9px;color:var(--muted)}
+.ib-v{font-size:9px;color:var(--soft)}
+.ib-chases{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.cht{font-size:8px;padding:2px 6px;border-radius:2px;letter-spacing:.06em;font-family:'DM Mono',monospace}
+
+/* ── Bottom bar ── */
+#bar{position:fixed;bottom:0;left:0;right:0;height:80px;
+  background:#100f0d;border-top:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;gap:12px}
+.btn{background:var(--panel);border:1px solid var(--border2);color:var(--ink);
+  font-size:11px;padding:8px 14px;border-radius:3px;cursor:pointer;
+  font-family:'DM Sans',sans-serif;font-weight:500;letter-spacing:.04em;transition:all .15s}
+.btn:hover{background:#1e1c18;border-color:#3a3830}
+.btn.go{background:var(--amber);border-color:var(--amber2);color:#0c0800}
+.btn.go:hover{background:var(--amber2)}
+.btn.ghost{background:transparent;border-color:var(--border);color:var(--muted)}
+.btn.ghost:hover{color:var(--ink);border-color:var(--border2)}
+.seqc{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.seq-lbl{font-size:8px;color:var(--muted);letter-spacing:.18em;font-family:'DM Mono',monospace}
+.seq-name{font-family:'Instrument Serif',serif;font-style:italic;font-size:15px;
+  color:var(--amber);min-height:20px;text-align:center;max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prog-wrap{width:100%;max-width:340px;height:1px;background:var(--border2);position:relative}
+.prog-fill{height:100%;background:var(--amber);transition:width .05s}
+.spd{display:flex;align-items:center;gap:7px}
+.spd-lbl{font-size:9px;color:var(--muted);letter-spacing:.1em;font-family:'DM Mono',monospace;min-width:38px}
+input[type=range]{-webkit-appearance:none;width:90px;height:1px;background:var(--border2);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;background:var(--amber);border-radius:50%;cursor:pointer}
+
+@media(max-width:900px){
+  #styleDeck{grid-template-columns:repeat(2,minmax(120px,1fr));right:auto;width:340px}
+  #gamePanel{width:230px}
+}
+/* ── AdriCad bridge ────────────────────────────────── */
+.l4d-chip{font-family:'DM Mono',monospace;font-size:8px;padding:2px 6px;border-radius:2px;letter-spacing:.05em}
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 8px 3px 6px;
+  border:1px solid var(--amber2);border-radius:2px;
+  background:var(--amberDim);
+  font-family:'DM Mono',monospace;font-size:9px;
+  color:var(--amber);letter-spacing:.07em;white-space:nowrap;
+  max-width:260px;overflow:hidden;text-overflow:ellipsis;
+}
+.bridge-chip .bc-arrow{opacity:.7;font-size:10px}
+.bridge-chip .bc-x{cursor:pointer;opacity:.5;margin-left:3px;font-size:10px;line-height:1}
+.bridge-chip .bc-x:hover{opacity:1;color:#fff}
+.sync-btn{
+  font-family:'DM Mono',monospace;font-size:9px;
+  padding:4px 9px;border-radius:2px;
+  border:1px solid var(--border2);
+  background:transparent;color:var(--muted);
+  cursor:pointer;letter-spacing:.07em;white-space:nowrap;
+  transition:all .15s;
+}
+.sync-btn:hover{color:var(--amber);border-color:var(--amber2);background:var(--amberDim)}
+#syncOverlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:299;backdrop-filter:blur(2px);
+}
+#syncPanel{
+  position:fixed;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  z-index:300;
+  background:var(--panel);
+  border:1px solid var(--border2);
+  border-radius:6px;padding:22px 24px;
+  width:500px;max-width:calc(100vw - 32px);
+  box-shadow:0 16px 48px rgba(0,0,0,.6);
+}
+.sp-head{
+  font-family:'Instrument Serif',serif;font-style:italic;
+  font-size:22px;color:#d8ceb4;margin-bottom:6px;
+}
+.sp-sub{
+  font-size:9px;color:var(--muted);letter-spacing:.14em;
+  font-family:'DM Mono',monospace;text-transform:uppercase;
+  margin-bottom:10px;
+}
+.sp-hint{
+  font-size:10px;color:var(--soft);line-height:1.6;
+  margin-bottom:14px;font-family:'DM Mono',monospace;
+  border-left:2px solid var(--border2);padding-left:10px;
+}
+.sp-input{
+  width:100%;background:#0c0b09;
+  border:1px solid var(--border2);border-radius:3px;
+  color:var(--ink);font-family:'DM Mono',monospace;
+  font-size:10px;padding:9px 11px;
+  resize:vertical;min-height:58px;outline:none;
+  transition:border-color .15s;
+}
+.sp-input:focus{border-color:var(--amber2)}
+.sp-row{display:flex;gap:8px;margin-top:11px}
+.sp-msg{font-size:9px;font-family:'DM Mono',monospace;margin-top:8px;min-height:14px;letter-spacing:.04em}
+.sp-divider{display:flex;align-items:center;gap:10px;margin:14px 0 10px;color:var(--border2);font-size:9px;font-family:'DM Mono',monospace;letter-spacing:.12em}
+.sp-divider::before,.sp-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.sp-localrow{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#0f0e0c;border:1px solid var(--border);border-radius:3px;margin-bottom:4px}
+.sp-localrow .sp-lname{font-size:10px;color:var(--soft);font-family:'DM Mono',monospace}
+.sp-localrow .sp-lmeta{font-size:8px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<body>
+
+<div class="suite-bar">
+  <span class="suite-brand">Adri<em>Suite</em></span>
+  <div class="suite-tabs">
+    <a class="stab" href="https://adricad.com/">AdriCad</a>
+    <a class="stab" href="https://adribim.com/">AdriBim</a>
+    <a class="stab" href="https://adriplan.com/">AdriPlan</a>
+    <span class="stab active">AdriSnap</span>
+  </div>
+  <div class="snap-mid">
+    <div class="proj-area">
+      <div class="proj-dot" id="projDot"></div>
+      <select class="proj-select" id="projSelect" onchange="onSnapProjectSelect(this.value)">
+        <option value="">— select project —</option>
+      </select>
+    </div>
+    <span id="bridgeChip" class="bridge-chip" style="display:none">
+      <span class="bc-arrow">↗</span>
+      <span id="bridgeLabel">AdriCad</span>
+      <span class="bc-x" onclick="clearBridge()" title="Clear bridge data">×</span>
+    </span>
+    <button class="sync-btn" onclick="openSyncPanel()" title="Load project from AdriCad">↗ AdriCad Sync</button>
+  </div>
+  <div class="suite-right">
+    <a class="suite-rtab login" id="navLoginBtn" href="#" onclick="event.preventDefault();openLoginModal()" title="Sign in">Login</a>
+  </div>
+  <span class="suite-ver">v1.0</span>
+</div>
+
+<div id="cv-wrap"><canvas id="c" width="1920" height="787"></canvas></div>
+<div id="styleDeck">
+    <button class="style-card " onclick="switchCity(&#39;brooklyn&#39;)">
+      <strong>Brooklyn Brownstone</strong>
+      <span>Brownstone / brick party wall</span>
+      <div class="swatches">
+        <i class="sw" style="background:#8f4f35"></i>
+        <i class="sw" style="background:#6f3728"></i>
+        <i class="sw" style="background:#4f261d"></i>
+        <i class="sw" style="background:#3f2a22"></i>
+        <i class="sw" style="background:#182838"></i>
+      </div>
+    </button>
+    <button class="style-card active" onclick="switchCity(&#39;vienna&#39;)">
+      <strong>Vienna Ringstrasse</strong>
+      <span>Wienerberger brick / limestone stucco</span>
+      <div class="swatches">
+        <i class="sw" style="background:#d8d0c0"></i>
+        <i class="sw" style="background:#c0b8a8"></i>
+        <i class="sw" style="background:#a89878"></i>
+        <i class="sw" style="background:#706858"></i>
+        <i class="sw" style="background:#1e3048"></i>
+      </div>
+    </button>
+    <button class="style-card " onclick="switchCity(&#39;jerusalem&#39;)">
+      <strong>Jerusalem</strong>
+      <span>Meleke limestone</span>
+      <div class="swatches">
+        <i class="sw" style="background:#d8c89e"></i>
+        <i class="sw" style="background:#c0a880"></i>
+        <i class="sw" style="background:#a88e62"></i>
+        <i class="sw" style="background:#706040"></i>
+        <i class="sw" style="background:#1e3040"></i>
+      </div>
+    </button>
+    <button class="style-card " onclick="switchCity(&#39;paris&#39;)">
+      <strong>Paris Haussmann</strong>
+      <span>Lutetian limestone</span>
+      <div class="swatches">
+        <i class="sw" style="background:#e2dac8"></i>
+        <i class="sw" style="background:#ccc4a8"></i>
+        <i class="sw" style="background:#b0a888"></i>
+        <i class="sw" style="background:#807868"></i>
+        <i class="sw" style="background:#182838"></i>
+      </div>
+    </button>
+    <button class="style-card " onclick="switchCity(&#39;london&#39;)">
+      <strong>London Georgian</strong>
+      <span>London stock brick / white sash</span>
+      <div class="swatches">
+        <i class="sw" style="background:#b35a3c"></i>
+        <i class="sw" style="background:#8a3e2e"></i>
+        <i class="sw" style="background:#5a2a22"></i>
+        <i class="sw" style="background:#d8d0c0"></i>
+        <i class="sw" style="background:#182838"></i>
+      </div>
+    </button>
+    <button class="style-card " onclick="switchCity(&#39;florence&#39;)">
+      <strong>Florence Palazzo</strong>
+      <span>Pietra forte sandstone</span>
+      <div class="swatches">
+        <i class="sw" style="background:#c8a870"></i>
+        <i class="sw" style="background:#b09058"></i>
+        <i class="sw" style="background:#907040"></i>
+        <i class="sw" style="background:#705030"></i>
+        <i class="sw" style="background:#183028"></i>
+      </div>
+    </button>
+    <button class="style-card " onclick="switchCity(&#39;edinburgh&#39;)">
+      <strong>Edinburgh Baronial</strong>
+      <span>Whinstone rubble masonry</span>
+      <div class="swatches">
+        <i class="sw" style="background:#909080"></i>
+        <i class="sw" style="background:#787870"></i>
+        <i class="sw" style="background:#606058"></i>
+        <i class="sw" style="background:#484840"></i>
+        <i class="sw" style="background:#182830"></i>
+      </div>
+    </button></div>
+<div id="infoCity">
+  <div class="ci-name" id="ciName">Vienna Ringstrasse</div>
+  <div class="ci-period" id="ciPeriod">c. 1857–1900</div>
+</div>
+<div id="metrics">
+  <div class="m-title">Assembly Telemetry</div>
+  <div class="m-grid">
+    <div class="m-cell"><div class="m-val" id="mPieces">584/584</div><div class="m-lbl">pieces set</div></div>
+    <div class="m-cell"><div class="m-val" id="mTons">4140t</div><div class="m-lbl">landed mass</div></div>
+    <div class="m-cell"><div class="m-val" id="mMEP">118</div><div class="m-lbl">MEP chases</div></div>
+    <div class="m-cell"><div class="m-val" id="mStage">100%</div><div class="m-lbl">complete</div></div>
+  </div>
+</div>
+<div id="viewTools">
+  <button class="toolbtn active" id="orbitToggle" onclick="toggleOrbit()" title="Auto orbit">⟳</button>
+  <button class="toolbtn" id="labelToggle" onclick="toggleLabels()" title="Piece labels">Aa</button>
+  <button class="toolbtn active" id="ghostToggle" onclick="toggleGhosts()" title="Target ghosts">□</button>
+  <button class="toolbtn" id="sectionToggle" onclick="toggleSection()" title="Section cut">◐</button>
+</div>
+
+<!-- 4D phase legend — right side below infoBlock, hidden until schedule loaded -->
+<div id="legend4d" style="display:none;position:fixed;top:230px;right:18px;z-index:100;
+  background:#131210e8;border:1px solid var(--border2);border-radius:4px;padding:8px 10px;
+  pointer-events:none;min-width:150px">
+  <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px">4D Phase Legend</div>
+  <div style="display:flex;flex-direction:column;gap:4px">
+    <span class="l4d-chip" style="background:#1e547422;border:1px solid #1e5474;color:#5a9ed4">● Preconstruction</span>
+    <span class="l4d-chip" style="background:#7c5a1022;border:1px solid #b87820;color:#d4a860">● Structure</span>
+    <span class="l4d-chip" style="background:#3a689822;border:1px solid #3a6898;color:#6aa8d8">● MEP rough-in</span>
+    <span class="l4d-chip" style="background:#28604022;border:1px solid #286040;color:#5a9e7e">● Envelope</span>
+    <span class="l4d-chip" style="background:#9e343222;border:1px solid #9e3432;color:#d47870">● Finishes</span>
+    <span class="l4d-chip" style="background:#66717c22;border:1px solid #66717c;color:#a0afb8">● Closeout</span>
+  </div>
+</div>
+<div id="gamePanel">
+  <div class="gp-kicker">Snap Sequence</div>
+  <div class="gp-title" id="gameTitle">Snap sequence running</div>
+  <div class="gp-text" id="gameText">Pieces are hovering into alignment and snapping each style-specific block into place.</div>
+  <div class="crew-chip" id="crewChip">sequence complete</div>
+  <div class="gp-score">
+    <div><strong id="scoreVal">14600</strong><span>score</span></div>
+    <div><strong id="streakVal">584</strong><span>streak</span></div>
+    <div><strong id="queueVal">0</strong><span>left</span></div>
+  </div>
+  <div class="gp-actions">
+    <button class="btn go" onclick="doSnap()">Start Sequence</button>
+    <button class="btn ghost" onclick="tourNextStyle()">Next Style</button>
+  </div>
+  <div class="gp-hint">No manual placement: the scene performs the snap sequence. Use the style cards to swap facade grammars. Click <strong>↗ AdriCad Sync</strong> to load your actual project dimensions.</div>
+</div>
+<div id="infoBlock" style="opacity: 1;">
+  <div class="ib-cat" id="ibCat">FACADE SECTION</div>
+  <div class="ib-name" id="ibName">Central palace body wall panel</div>
+  <div class="ib-row"><span class="ib-k">material</span><span class="ib-v" id="ibMat">Wienerberger brick / limestone stucco</span></div>
+  <div class="ib-row"><span class="ib-k">dimensions</span><span class="ib-v" id="ibDim">3.0×3.6×0.55 m</span></div>
+  <div class="ib-row"><span class="ib-k">weight</span><span class="ib-v" id="ibWt">12.9 t</span></div>
+  <div class="ib-chases" id="ibChases"></div>
+</div>
+<div id="stageList"><div class="sl-item done" id="si0"><div class="sl-dot"></div>Foundation plinth</div><div class="sl-item done" id="si1"><div class="sl-dot"></div>Ground floor walls</div><div class="sl-item done" id="si2"><div class="sl-dot"></div>Ground floor MEP</div><div class="sl-item done" id="si3"><div class="sl-dot"></div>Ground floor planks</div><div class="sl-item done" id="si4"><div class="sl-dot"></div>First floor walls</div><div class="sl-item done" id="si5"><div class="sl-dot"></div>First floor MEP</div><div class="sl-item done" id="si6"><div class="sl-dot"></div>First floor planks</div><div class="sl-item done" id="si7"><div class="sl-dot"></div>Second floor walls</div><div class="sl-item done" id="si8"><div class="sl-dot"></div>Cornice &amp; parapet</div><div class="sl-item active" id="si9"><div class="sl-dot"></div>Roof slabs &amp; chimneys</div></div>
+<div id="bar">
+  <button class="btn ghost" onclick="doReset()">↺ Site</button>
+  <button class="btn go" id="btnSnap" onclick="doSnap()">↺ Rebuild</button>
+  <div class="seqc">
+    <div class="seq-lbl">ASSEMBLY SEQUENCE</div>
+    <div class="seq-name" id="seqName">Assembly complete</div>
+    <div class="prog-wrap"><div class="prog-fill" id="pf" style="width: 100%;"></div></div>
+  </div>
+  <div class="spd">
+    <span class="spd-lbl" id="spdLabel">SPEED</span>
+    <input type="range" id="spdCtrl" min="0.2" max="4" step="0.1" value="1">
+  </div>
+</div>
+
+<script>
+if(!window.THREE){
+  document.getElementById('ibCat').textContent='3D ENGINE UNAVAILABLE';
+  document.getElementById('ibName').textContent='Three.js did not load';
+  document.getElementById('ibMat').textContent='Check internet or serve with bundled three.min.js';
+  document.getElementById('seqName').textContent='Renderer unavailable';
+  throw new Error('Three.js unavailable');
+}
+
+// ─── ADRICAD BRIDGE ──────────────────────────────────────────────
+let _bridgeData = null; // populated when AdriCad data is loaded
+
+function _encode(obj){ try{return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));}catch(e){return '';}}
+function _decode(str){ try{return JSON.parse(decodeURIComponent(escape(atob(str))));}catch(e){return null;}}
+
+function _bridgeDims(){
+  // Returns {uwM, udM, fhM, fl, units, totalW, totalH} from bridge data, or defaults
+  if(!_bridgeData||!_bridgeData.building) return {uwM:UW,udM:UD,fhM:FH,fl:FL,units:UNITS,totalW:TW,totalH:FL*FH};
+  const b=_bridgeData.building, p=_bridgeData.project||{};
+  const FT=3.28084;
+  const uwM=Math.max(3,(b.unitWidth||0)/FT||UW);
+  const udM=Math.max(5,(b.depth||0)/FT||UD);
+  const fhM=Math.max(2.2,(b.floorHeight||0)/FT||FH);
+  const fl=Math.max(1,b.floors||FL);
+  const units=Math.max(1,p.units||UNITS);
+  return{uwM,udM,fhM,fl,units,totalW:uwM*units,totalH:fl*fhM};
+}
+
+function updateBridgeChip(data){
+  const chip=document.getElementById('bridgeChip');
+  const lbl=document.getElementById('bridgeLabel');
+  if(!data||!data.building){chip.style.display='none';return;}
+  chip.style.display='';
+  const b=data.building, p=data.project||{};
+  const FT=3.28084;
+  const style=p.style&&CITIES[p.style]?CITIES[p.style].name.split(' ')[0]:null;
+  const fl=b.floors||FL;
+  const units=p.units||UNITS;
+  const uwStr=b.unitWidth?((b.unitWidth/FT).toFixed(1)):'—';
+  const udStr=b.depth?((b.depth/FT).toFixed(1)):'—';
+  const proj=data._suiteProjName||p.name||'';
+  lbl.textContent=(proj?proj+' · ':'')+
+    (style?style+' · ':'')+`${fl}F · ${units}U · ${uwStr}×${udStr}m`;
+}
+
+function applyBridgeData(data){
+  if(!data||!data.building) return false;
+  _bridgeData=data;
+  // Resolve style: exact match first, then fallback map, then keep current
+  const rawStyle = data.project && data.project.style;
+  const resolved = resolveSnapStyle(rawStyle);
+  if(resolved) currentCity = resolved;
+  updateBridgeChip(data);
+  // Bridge mode: hide the demo style deck, show compact style selector only
+  const deck = document.getElementById('styleDeck');
+  if(deck) deck.style.display='none';
+  // Update city info to show project name instead of demo city name
+  const projName = data._suiteProjName || (data.project && data.project.name) || '';
+  if(projName){
+    const ciName = document.getElementById('ciName');
+    const ciPeriod = document.getElementById('ciPeriod');
+    if(ciName) ciName.textContent = projName;
+    if(ciPeriod) ciPeriod.textContent = 'from AdriCad · ' + (CITIES[currentCity]||{}).name;
+  }
+  // Update style select to show resolved city
+  const pick = document.getElementById('cityPick');
+  if(pick && resolved) pick.value = resolved;
+
+  // ── 4D schedule ──────────────────────────────────────────────
+  if(data.schedule && data.schedule.phases && data.schedule.phases.length){
+    _buildStagesFromSchedule(data.schedule);
+  } else {
+    // No schedule in bridge — check dedicated schedule key before resetting
+    let foundSchedule = false;
+    try{
+      const stored = localStorage.getItem('adri:snap:schedule');
+      if(stored){
+        const sched = JSON.parse(stored);
+        if(sched && sched.phases && sched.phases.length){
+          _buildStagesFromSchedule(sched);
+          foundSchedule = true;
+        }
+      }
+    }catch(e){}
+    if(!foundSchedule){
+      // Reset to demo stages
+      _4dMode = false;
+      _scheduleData = null;
+      _activeStages = STAGES_DEFAULT.slice();
+      _activeStageAt = STAGE_AT_DEFAULT.slice();
+      const scrub = document.getElementById('spdCtrl');
+      if(scrub){ scrub.min=0.2; scrub.max=4; scrub.step=0.1; scrub.value=1; }
+      const spdLbl = document.getElementById('spdLabel');
+      if(spdLbl) spdLbl.textContent = 'SPEED';
+    }
+  }
+
+  // Rebuild with new dimensions
+  playing=false; elapsed=0; score=0; streak=0;
+  buildScene(currentCity);
+  return true;
+}
+
+function loadAdriCadBridge(){
+  // 1. URL param (when navigated from AdriCad/AdriPlan with adriSync=)
+  const params=new URLSearchParams(location.search);
+  const syncParam=params.get('adriSync');
+  if(syncParam){
+    const data=_decode(syncParam);
+    if(data){
+      // Always persist whatever arrived — may have schedule, building, or both
+      try{localStorage.setItem('adri:snap:bridge',JSON.stringify(data));}catch(e){}
+      // If schedule is in the payload, apply it immediately before clearing the param
+      if(data.schedule&&data.schedule.phases&&data.schedule.phases.length){
+        _buildStagesFromSchedule(data.schedule);
+        // Also write to dedicated schedule key for resilience
+        try{localStorage.setItem('adri:snap:schedule',JSON.stringify(data.schedule));}catch(e){}
+      }
+      params.delete('adriSync');
+      history.replaceState(null,'',location.pathname+(params.toString()?'?'+params.toString():'')+location.hash);
+      if(data.building){
+        applyBridgeData(data);
+        return;
+      }
+      // Schedule-only payload — update UI without full scene rebuild
+      if(data._suiteProjName||data.project){
+        const ciName=document.getElementById('ciName');
+        const ciPeriod=document.getElementById('ciPeriod');
+        if(ciName) ciName.textContent=data._suiteProjName||(data.project&&data.project.name)||ciName.textContent;
+        if(ciPeriod) ciPeriod.textContent='from AdriPlan · 4D schedule';
+      }
+      buildStageUI();
+      return;
+    }
+  }
+  // 2. Locally stored snap bridge (from a previous URL handoff or paste)
+  try{
+    const stored=localStorage.getItem('adri:snap:bridge');
+    if(stored){const d=JSON.parse(stored);if(d&&d.building){ applyBridgeData(d); return; }}
+  }catch(e){}
+  // 3. Same-origin adri:platform (local dev / both apps on same origin)
+  try{
+    const plat=localStorage.getItem('adri:platform');
+    if(plat){const d=JSON.parse(plat);if(d&&d.building){ applyBridgeData(d); return; }}
+  }catch(e){}
+  updateBridgeChip(null);
+
+  // 4. Dedicated schedule key written by AdriPlan — cross-domain, no building needed
+  try{
+    const stored=localStorage.getItem('adri:snap:schedule');
+    if(stored){
+      const sched=JSON.parse(stored);
+      if(sched&&sched.phases&&sched.phases.length){
+        _buildStagesFromSchedule(sched);
+        buildStageUI();
+      }
+    }
+  }catch(e){}
+}
+
+function clearBridge(){
+  _bridgeData=null;
+  try{localStorage.removeItem('adri:snap:bridge');}catch(e){}
+  updateBridgeChip(null);
+  // Restore demo mode: show style deck, reset city label
+  const deck = document.getElementById('styleDeck');
+  if(deck) deck.style.display='';
+  const ciName = document.getElementById('ciName');
+  const ciPeriod = document.getElementById('ciPeriod');
+  if(ciName) ciName.textContent = CITIES[currentCity]?.name || '';
+  if(ciPeriod) ciPeriod.textContent = CITIES[currentCity]?.period || '';
+  playing=false;elapsed=0;score=0;streak=0;
+  buildScene(currentCity);
+}
+
+function openSyncPanel(){
+  // show any locally-stored data in the panel
+  document.getElementById('syncMsg').textContent='';
+  document.getElementById('syncInput').value='';
+  _renderLocalData();
+  document.getElementById('syncOverlay').style.display='block';
+  document.getElementById('syncPanel').style.display='block';
+}
+function closeSyncPanel(){
+  document.getElementById('syncOverlay').style.display='none';
+  document.getElementById('syncPanel').style.display='none';
+}
+function _renderLocalData(){
+  const el=document.getElementById('syncLocalRow');
+  if(!el) return;
+  let d=null;
+  try{const s=localStorage.getItem('adri:snap:bridge');if(s)d=JSON.parse(s);}catch(e){}
+  if(!d) try{const s=localStorage.getItem('adri:platform');if(s)d=JSON.parse(s);}catch(e){}
+  if(d&&d.building){
+    const b=d.building,p=d.project||{};
+    const FT=3.28084;
+    const style=p.style&&CITIES[p.style]?CITIES[p.style].name:'—';
+    const fl=b.floors||'—';
+    const uw=b.unitWidth?((b.unitWidth/FT).toFixed(1)):'-';
+    const ud=b.depth?((b.depth/FT).toFixed(1)):'-';
+    const proj=d._suiteProjName||p.name||'Untitled project';
+    el.innerHTML=`<div><div class="sp-lname">${proj}</div><div class="sp-lmeta">${style} · ${fl}F · ${uw}×${ud}m</div></div>
+      <button class="btn go" style="padding:5px 10px;font-size:10px" onclick="applyBridgeData(JSON.parse(localStorage.getItem('adri:snap:bridge')||localStorage.getItem('adri:platform')||'{}'));closeSyncPanel()">Load</button>`;
+    el.style.display='flex';
+  } else {
+    el.style.display='none';
+  }
+}
+function doLoadFromURL(){
+  const raw=document.getElementById('syncInput').value.trim();
+  const msg=document.getElementById('syncMsg');
+  if(!raw){msg.textContent='Paste a URL or adriSync value first.';msg.style.color='#b05050';return;}
+  let adriSync=raw;
+  if(raw.includes('adriSync=')){
+    try{
+      const urlObj=new URL(raw.includes('://')?raw:'https://x.com/?'+raw.split('?').slice(1).join('?'));
+      adriSync=urlObj.searchParams.get('adriSync')||'';
+    }catch(e){
+      const m=raw.match(/adriSync=([^&\s]+)/);
+      adriSync=m?m[1]:raw;
+    }
+  }
+  const data=_decode(adriSync);
+  if(!data||!data.building){
+    msg.textContent='✕ Could not read project data — paste the full AdriCad URL.';
+    msg.style.color='#c04040';return;
+  }
+  try{localStorage.setItem('adri:snap:bridge',JSON.stringify(data));}catch(e){}
+  msg.textContent='✓ Project loaded.';msg.style.color='var(--amber)';
+  setTimeout(()=>{applyBridgeData(data);closeSyncPanel();},600);
+}
+
+// Live bridge sync when AdriCad/AdriPlan writes to same-origin localStorage
+window.addEventListener('storage',e=>{
+  if(e.key==='adri:platform'&&e.newValue){
+    try{
+      const d=JSON.parse(e.newValue);
+      if(d&&d.building&&d.building.source==='adricad') applyBridgeData(d);
+      // Schedule-only push from AdriPlan (building may already be loaded)
+      else if(d&&d.schedule&&d.schedule.phases){
+        _buildStagesFromSchedule(d.schedule);
+        buildStageUI();
+      }
+    }catch(err){}
+  }
+  // Dedicated schedule key written by AdriPlan pushScheduleToSnap
+  if(e.key==='adri:snap:schedule'&&e.newValue){
+    try{
+      const sched=JSON.parse(e.newValue);
+      if(sched&&sched.phases&&sched.phases.length){
+        _buildStagesFromSchedule(sched);
+        buildStageUI();
+      }
+    }catch(err){}
+  }
+});
+
+function _show4DBadge(sched){
+  // Show a small 4D chip in the suite bar mid area
+  let badge = document.getElementById('badge4d');
+  if(!badge){
+    badge = document.createElement('span');
+    badge.id = 'badge4d';
+    badge.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid rgba(138,184,64,.45);border-radius:2px;background:rgba(138,184,64,.12);font-family:\'DM Mono\',monospace;font-size:9px;color:#8ab840;letter-spacing:.07em;white-space:nowrap';
+    const mid = document.querySelector('.snap-mid');
+    if(mid) mid.appendChild(badge);
+  }
+  const wks = sched.totalWks ? Math.round(sched.totalWks) + ' wks' : '';
+  const phases = sched.phases ? sched.phases.filter(p=>!p.parallel).length + ' phases' : '';
+  badge.textContent = '4D · ' + [phases, wks].filter(Boolean).join(' · ');
+  badge.title = 'Schedule from AdriPlan — use the WEEK scrubber to navigate';
+}
+
+// ─── SUPABASE AUTH ────────────────────────────────────────────────
+const _SB_URL  = 'https://peremcaghmxsqvsxuuwi.supabase.co';
+const _SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlcmVtY2FnaG14c3F2c3h1dXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNjc5MjksImV4cCI6MjA5MzY0MzkyOX0.-TB6VGzXgGC1xSjabWQxQjFY3VyRxoy9ruxX8aZU0CY';
+let sbSnap = null;
+
+function _snapUpdateAuthUI(user){
+  const btn = document.getElementById('navLoginBtn');
+  if(!btn) return;
+  if(user){
+    const label = user.user_metadata?.full_name || user.email || 'Signed in';
+    const short = label.length > 18 ? label.slice(0,16)+'…' : label;
+    btn.textContent = '⬤ ' + short;
+    btn.title = (user.email||'') + '\nClick to sign out';
+    btn.onclick = async e => { e.preventDefault(); if(sbSnap) await sbSnap.auth.signOut(); };
+    btn.href = '#';
+  } else {
+    btn.textContent = 'Login';
+    btn.title = 'Sign in';
+    btn.onclick = e => { e.preventDefault(); openLoginModal(); };
+    btn.href = '#';
+  }
+}
+
+function openLoginModal(){
+  const m = document.getElementById('loginModal');
+  if(m){ m.classList.add('open'); document.getElementById('lmMsg').textContent=''; }
+}
+function closeLoginModal(){
+  const m = document.getElementById('loginModal');
+  if(m) m.classList.remove('open');
+}
+// Close on backdrop click
+document.addEventListener('click', e => {
+  const m = document.getElementById('loginModal');
+  if(m && e.target === m) closeLoginModal();
+});
+
+async function _snapSignInGoogle(){
+  if(!sbSnap){ document.getElementById('lmMsg').textContent='Auth not ready'; return; }
+  const msg = document.getElementById('lmMsg');
+  msg.style.color='var(--amber)';
+  msg.textContent='Opening Google sign-in…';
+  // OAuth flow: Google → Supabase → adricad.com?snapReturn=1 → AdriCad relays session → adrisnap.com
+  // This works without any Supabase redirect URL config changes.
+  // (Once https://adrisnap.com is added to Supabase redirect URLs, change redirectTo to location.origin)
+  const snapReturn = 'https://www.adricad.com/?snapReturn=1';
+  try {
+    await sbSnap.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: snapReturn }
+    });
+  } catch(e) {
+    msg.style.color='#c06060';
+    msg.textContent = 'OAuth error: ' + e.message;
+  }
+}
+async function _snapSignInEmail(){
+  if(!sbSnap) return;
+  const email = document.getElementById('lmEmail').value.trim();
+  const pw    = document.getElementById('lmPw').value;
+  const msg   = document.getElementById('lmMsg');
+  if(!email||!pw){ msg.style.color='#c06060'; msg.textContent='Enter email and password.'; return; }
+  msg.style.color='var(--amber)'; msg.textContent='Signing in…';
+  const { data, error } = await sbSnap.auth.signInWithPassword({ email, pw });
+  if(error){ msg.style.color='#c06060'; msg.textContent=error.message; }
+  else { closeLoginModal(); _snapUpdateAuthUI(data.user); }
+}
+
+(async function _snapInitAuth(){
+  if(!window.supabase){ console.warn('[AdriSnap] Supabase not loaded'); return; }
+  sbSnap = window.supabase.createClient(_SB_URL, _SB_KEY);
+  window._adriSb = sbSnap;
+
+  // Consume auth relay written by AdriCad before navigating here
+  try{
+    const raw = sessionStorage.getItem('adri:relay:snap');
+    if(raw){
+      sessionStorage.removeItem('adri:relay:snap');
+      const relay = JSON.parse(raw);
+      if(relay && relay.access_token) await sbSnap.auth.setSession(relay);
+    }
+  }catch(e){}
+
+  let _lastLoad = 0;
+  sbSnap.auth.onAuthStateChange((_ev, session) => {
+    _snapUpdateAuthUI(session ? session.user : null);
+    // Deduplicate: only fire loadSnapProjects when session actually changes
+    const now = Date.now();
+    if(session && now - _lastLoad > 2000){
+      _lastLoad = now;
+      loadSnapProjects(session);
+      // Close login modal if open
+      closeLoginModal();
+    }
+    if(!session){
+      // Signed out — clear project dot
+      const dot = document.getElementById('projDot');
+      if(dot) dot.className = 'proj-dot';
+      const sel = document.getElementById('projSelect');
+      if(sel) sel.innerHTML = '<option value="">— sign in to load projects —</option>';
+    }
+  });
+
+  const { data:{ session } } = await sbSnap.auth.getSession();
+  _snapUpdateAuthUI(session ? session.user : null);
+  if(session){
+    _lastLoad = Date.now();
+    loadSnapProjects(session);
+  }
+
+  // If adriSync URL param didn't populate bridge, try loading from Supabase by project UUID
+  if(!_bridgeData || !_bridgeData.building){
+    const _pid = new URLSearchParams(location.search).get('project');
+    if(_pid && session) loadSnapProject(_pid);
+  }
+})();
+
+// ─── PROJECT LOADING (mirrors AdriCad/AdriBim pattern) ───────────
+let _snapCurrentProjId = null;
+
+async function loadSnapProjects(session){
+  if(!sbSnap) return;
+  const { data, error } = await sbSnap
+    .from('projects')
+    .select('id,name,architectural_style,units,updated_at')
+    .order('updated_at',{ascending:false})
+    .limit(40);
+  if(error){ console.warn('[AdriSnap] loadSnapProjects:', error.message); return; }
+  const list = data || [];
+  const sel = document.getElementById('projSelect');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">— select project —</option>';
+  list.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.id; o.textContent = p.name;
+    sel.appendChild(o);
+  });
+  // Auto-select: prefer project from URL, then bridge, then most recent
+  // But don't auto-load if a 4D schedule is already active — it would reset the scene
+  const urlPid = new URLSearchParams(location.search).get('project');
+  const bridgePid = (() => { try{ return JSON.parse(localStorage.getItem('adri:platform')||'{}')._suiteProjectId; }catch(e){return null;} })();
+  const pick = urlPid || bridgePid || (list.length > 0 ? list[0].id : null);
+  if(pick && list.some(p => p.id === pick)){
+    sel.value = pick;
+    // Only auto-load if not already in 4D mode, or if URL explicitly requested this project
+    if(!_4dMode || urlPid){
+      loadSnapProject(pick);
+    }
+  }
+}
+
+async function loadSnapProject(id){
+  if(!id || !sbSnap) return;
+  _snapCurrentProjId = id;
+  const dot = document.getElementById('projDot');
+  if(dot) dot.className = 'proj-dot dirty';
+
+  const { data: proj, error } = await sbSnap
+    .from('projects')
+    .select('id,name,architectural_style,footprint_w_m,footprint_d_m,floors,floor_height_m,units')
+    .eq('id', id)
+    .single();
+  if(error){ console.warn('[AdriSnap] loadSnapProject:', error.message); return; }
+
+  const FT = 3.28084;
+  const synth = {
+    _suiteProjectId: proj.id,
+    _suiteProjName:  proj.name || '',
+    project: {
+      id: proj.id,
+      name: proj.name,
+      style: proj.architectural_style,
+      units: proj.units || 1
+    },
+    building: {
+      unitWidth:   (proj.footprint_w_m  || 5) * FT,
+      depth:       (proj.footprint_d_m  || 8) * FT,
+      floors:      proj.floors          || 3,
+      floorHeight: (proj.floor_height_m || 3.0) * FT,
+      source:      'supabase'
+    }
+  };
+
+  // Preserve any pushed schedule — inject it so applyBridgeData sees it directly
+  // and never falls through to the demo-reset branch
+  if(_scheduleData){
+    synth.schedule = _scheduleData;
+  } else {
+    try{
+      const stored = localStorage.getItem('adri:snap:schedule');
+      if(stored){ const s = JSON.parse(stored); if(s&&s.phases) synth.schedule = s; }
+    }catch(e){}
+  }
+
+  // Write to bridge so adriSync chip shows project name
+  try{ localStorage.setItem('adri:snap:bridge', JSON.stringify(synth)); }catch(e){}
+  applyBridgeData(synth);
+  if(dot) dot.className = 'proj-dot saved';
+
+  // Keep URL in sync
+  const params = new URLSearchParams(location.search);
+  params.set('project', id);
+  history.replaceState(null, '', location.pathname + '?' + params.toString());
+}
+
+function onSnapProjectSelect(id){
+  if(!id) return;
+  loadSnapProject(id);
+}
+// ─── CITIES ───────────────────────────────────────────────────────
+// City-name → snap style fallback (spelling variants / aliases not in CITIES directly)
+const STYLE_FALLBACK = {
+  // Spelling variants of AdriCad keys
+  tel_aviv:'telaviv', bat_yam:'batyam', buenos_aires:'buenosaires',
+  cape_town:'capetown', new_orleans:'neworleans', mexico_city:'mexicocity',
+  // Generic fallbacks for anything else
+  pittsburgh:'brooklyn', boston:'brooklyn', philadelphia:'brooklyn',
+  chrushovka:'edinburgh', oslo:'edinburgh',
+  krakow:'prague', budapest:'vienna', warsaw:'vienna',
+};
+function resolveSnapStyle(style){
+  if(!style) return null;
+  const key = style.toLowerCase().replace(/[^a-z0-9_]/g,'_');
+  if(CITIES[key]) return key;
+  if(STYLE_FALLBACK[key]) return STYLE_FALLBACK[key];
+  return null;
+}
+
+const CITIES={
+  // ── Core 7 (original AdriSnap) ────────────────────────────────
+  brooklyn:    {name:'Brooklyn Brownstone',   period:'c. 1870–1910',
+    s1:0x8f4f35,s2:0x6f3728,s3:0x4f261d,mortar:0x3f2a22,
+    plank:0x9a7055,plankD:0x74503e,glass:0x182838,
+    mat:'Brownstone / brick party wall',sky:0xb4c8d8,fog:0x9fb4c2,arch:'brooklyn'},
+  vienna:      {name:'Vienna Ringstrasse',    period:'c. 1857–1900',
+    s1:0xd8d0c0,s2:0xc0b8a8,s3:0xa89878,mortar:0x706858,
+    plank:0xc8b888,plankD:0xb0a070,glass:0x1e3048,
+    mat:'Wienerberger brick / limestone stucco',sky:0xb8c4cc,fog:0x98a8b4,arch:'vienna'},
+  jerusalem:   {name:'Jerusalem Stone',       period:'c. 1920–present',
+    s1:0xd8c89e,s2:0xc0a880,s3:0xa88e62,mortar:0x706040,
+    plank:0xc8b888,plankD:0xb09868,glass:0x1e3040,
+    mat:'Meleke limestone',sky:0xd0c8b4,fog:0xb8b09a,arch:'jerusalem'},
+  paris:       {name:'Paris Haussmann',       period:'c. 1853–1927',
+    s1:0xe2dac8,s2:0xccc4a8,s3:0xb0a888,mortar:0x807868,
+    plank:0xd0b890,plankD:0xb89870,glass:0x182838,
+    mat:'Lutetian limestone',sky:0xbcc8d4,fog:0xa0b0bc,arch:'paris'},
+  london:      {name:'London Georgian',       period:'c. 1714–1840',
+    s1:0xb35a3c,s2:0x8a3e2e,s3:0x5a2a22,mortar:0xd8d0c0,
+    plank:0xb88a60,plankD:0x8a6448,glass:0x182838,
+    mat:'London stock brick / white sash',sky:0xa8b4bc,fog:0x8f9aa3,arch:'london'},
+  florence:    {name:'Florence Palazzo',      period:'c. 1400–1600',
+    s1:0xc8a870,s2:0xb09058,s3:0x907040,mortar:0x705030,
+    plank:0xb88850,plankD:0xa07038,glass:0x183028,
+    mat:'Pietra forte sandstone',sky:0xb0c0cc,fog:0x98a8b8,arch:'florence'},
+  edinburgh:   {name:'Edinburgh Baronial',    period:'c. 1600–1850',
+    s1:0x909080,s2:0x787870,s3:0x606058,mortar:0x484840,
+    plank:0x887868,plankD:0x706050,glass:0x182830,
+    mat:'Whinstone rubble masonry',sky:0x909aa4,fog:0x788290,arch:'edinburgh'},
+  // ── AdriCad extended cities ───────────────────────────────────
+  berlin:      {name:'Berlin Gründerzeit',    period:'c. 1870–1914',
+    s1:0xc8b870,s2:0xb0a058,s3:0x888040,mortar:0x706838,
+    plank:0xb09860,plankD:0x907840,glass:0x1e3048,
+    mat:'Berlin yellow brick / ochre render',sky:0xb4bccc,fog:0x9aa4b8,arch:'vienna'},
+  batyam:      {name:'Bat Yam',               period:'c. 1950–1990',
+    s1:0xe4dcc8,s2:0xccc4b0,s3:0x9a9280,mortar:0x706858,
+    plank:0xc8c0a8,plankD:0xb0a890,glass:0x1e3040,
+    mat:'White render / exposed concrete',sky:0xc8d4d8,fog:0xb0bcc0,arch:'jerusalem'},
+  telaviv:     {name:'Tel Aviv Bauhaus',      period:'c. 1930–1960',
+    s1:0xf0e8d4,s2:0xd8d0b8,s3:0xb0a890,mortar:0x888070,
+    plank:0xd0c8b0,plankD:0xb8b098,glass:0x182840,
+    mat:'White render / International Style',sky:0xc8d8e0,fog:0xb0c0c8,arch:'jerusalem'},
+  amsterdam:   {name:'Amsterdam Canal',       period:'c. 1600–1750',
+    s1:0x8a5038,s2:0x6a3828,s3:0x4a2818,mortar:0x403020,
+    plank:0x907060,plankD:0x705040,glass:0x182848,
+    mat:'Amsterdam dark brick / sandstone',sky:0xa8b4bc,fog:0x90a0a8,arch:'london'},
+  tokyo:       {name:'Tokyo',                 period:'c. 1960–present',
+    s1:0x585858,s2:0x484848,s3:0x383838,mortar:0x282828,
+    plank:0x605858,plankD:0x484040,glass:0x182830,
+    mat:'RC concrete / tile cladding',sky:0xb0b8c0,fog:0x98a0a8,arch:'brooklyn'},
+  marrakech:   {name:'Marrakech Medina',      period:'c. 1100–1900',
+    s1:0xd49060,s2:0xbc7848,s3:0x9c6038,mortar:0x806040,
+    plank:0xc48858,plankD:0xa87040,glass:0x1c2820,
+    mat:'Terracotta / lime render',sky:0xd0c0a4,fog:0xb8a888,arch:'jerusalem'},
+  miami:       {name:'Miami Art Deco',        period:'c. 1920–1940',
+    s1:0xe8d8b4,s2:0xd0c09c,s3:0xb4a882,mortar:0x989070,
+    plank:0xd0c8a8,plankD:0xb8b090,glass:0x1e3858,
+    mat:'Stucco / Art Deco render',sky:0xb8d0d8,fog:0xa0b8c0,arch:'london'},
+  chicago:     {name:'Chicago School',        period:'c. 1880–1940',
+    s1:0x706858,s2:0x585040,s3:0x403830,mortar:0x302820,
+    plank:0x706050,plankD:0x504038,glass:0x182840,
+    mat:'Limestone / Chicago common brick',sky:0xa8b0b8,fog:0x8e9aa0,arch:'paris'},
+  barcelona:   {name:'Barcelona Modernisme',  period:'c. 1880–1930',
+    s1:0xd4b070,s2:0xbc9858,s3:0xa07840,mortar:0x806040,
+    plank:0xc4a860,plankD:0xa88848,glass:0x183040,
+    mat:'Catalan stone / Modernisme',sky:0xb8c4cc,fog:0xa0acb4,arch:'paris'},
+  istanbul:    {name:'Istanbul Ottoman',      period:'c. 1700–1920',
+    s1:0xc8a870,s2:0xb09058,s3:0x907040,mortar:0x706040,
+    plank:0xb89860,plankD:0x987848,glass:0x1c2830,
+    mat:'Limestone / Ottoman timber frame',sky:0xb0c0c8,fog:0x9aacb4,arch:'florence'},
+  havana:      {name:'Havana Colonial',       period:'c. 1700–1950',
+    s1:0xe8c870,s2:0xd0b058,s3:0xb09040,mortar:0x908050,
+    plank:0xd0b860,plankD:0xb89848,glass:0x183028,
+    mat:'Painted colonial stucco',sky:0xb8ccd0,fog:0xa0b4b8,arch:'florence'},
+  athens:      {name:'Athens Neoclassical',   period:'c. 1830–1940',
+    s1:0xf0e8d0,s2:0xd8d0b4,s3:0xc0b898,mortar:0xa09878,
+    plank:0xe0d8bc,plankD:0xc8c0a0,glass:0x1e3848,
+    mat:'White plaster / Hymettian marble',sky:0xc8d4d8,fog:0xb0bcc0,arch:'jerusalem'},
+  prague:      {name:'Prague Baroque',        period:'c. 1680–1900',
+    s1:0xd09058,s2:0xb87840,s3:0x985e30,mortar:0x785038,
+    plank:0xc08848,plankD:0xa07030,glass:0x1e2838,
+    mat:'Baroque render / Cepický sandstone',sky:0xa8b4bc,fog:0x8e9aa4,arch:'vienna'},
+  sydney:      {name:'Sydney Federation',     period:'c. 1890–1915',
+    s1:0xa85040,s2:0x883830,s3:0x682820,mortar:0xccc4b0,
+    plank:0x987060,plankD:0x785048,glass:0x182838,
+    mat:'Federation red brick / terracotta',sky:0xb4c8d0,fog:0x9cb0b8,arch:'brooklyn'},
+  cairo:       {name:'Cairo Colonial',        period:'c. 1870–1950',
+    s1:0xdcc890,s2:0xc4b078,s3:0xa89060,mortar:0x908070,
+    plank:0xccb878,plankD:0xb4a060,glass:0x1c2828,
+    mat:'Limestone / Cairo colonial render',sky:0xd4c8a8,fog:0xbcb090,arch:'jerusalem'},
+  stockholm:   {name:'Stockholm Jugendstil',  period:'c. 1890–1920',
+    s1:0xd4bc88,s2:0xbca470,s3:0xa08858,mortar:0x807848,
+    plank:0xc4b078,plankD:0xa89060,glass:0x203050,
+    mat:'Pale brick / Jugendstil render',sky:0xb4bcc4,fog:0x9aa4ac,arch:'edinburgh'},
+  rio:         {name:'Rio de Janeiro',        period:'c. 1850–1950',
+    s1:0xe0d8c0,s2:0xc8c0a4,s3:0xb0a888,mortar:0x9a9070,
+    plank:0xd0c8a8,plankD:0xb8b090,glass:0x183040,
+    mat:'White colonial render',sky:0xbcd0d4,fog:0xa4b8bc,arch:'paris'},
+  capetown:    {name:'Cape Town Cape Dutch',  period:'c. 1680–1900',
+    s1:0xf0ece0,s2:0xd8d4c0,s3:0xbcb8a0,mortar:0xa0a090,
+    plank:0xe0dcc4,plankD:0xc8c4a8,glass:0x182840,
+    mat:'White-washed brick / Cape Dutch',sky:0xb4c4cc,fog:0x9cb0b8,arch:'edinburgh'},
+  neworleans:  {name:'New Orleans Creole',    period:'c. 1790–1900',
+    s1:0xd4a060,s2:0xbc8848,s3:0xa07030,mortar:0x806040,
+    plank:0xc49858,plankD:0xa87840,glass:0x182838,
+    mat:'Painted plaster / cast iron gallery',sky:0xb4c8c0,fog:0x9cb0a8,arch:'brooklyn'},
+  delhi:       {name:'Delhi Mughal',          period:'c. 1600–1950',
+    s1:0xd49060,s2:0xbc7848,s3:0x9c6038,mortar:0x806848,
+    plank:0xc48860,plankD:0xa87048,glass:0x1c2828,
+    mat:'Delhi quartzite / red sandstone',sky:0xc8b8a0,fog:0xb0a08a,arch:'florence'},
+  moscow:      {name:'Moscow Stalinist',      period:'c. 1935–1960',
+    s1:0xe0d8bc,s2:0xc8c0a0,s3:0xb0a880,mortar:0x908868,
+    plank:0xd0c8a8,plankD:0xb8b090,glass:0x182840,
+    mat:'Limestone / Stalinist classical',sky:0xa8b0b8,fog:0x8e98a0,arch:'paris'},
+  mexicocity:  {name:'Mexico City Colonial',  period:'c. 1550–1900',
+    s1:0xb84040,s2:0x983028,s3:0x782018,mortar:0xd0c0a0,
+    plank:0xb08070,plankD:0x905858,glass:0x1c2830,
+    mat:'Tezontle volcanic stone / cantera',sky:0xb4b8b8,fog:0x9a9ea0,arch:'florence'},
+  shanghai:    {name:'Shanghai Shikumen',     period:'c. 1880–1940',
+    s1:0x686060,s2:0x504848,s3:0x383030,mortar:0x282420,
+    plank:0x806868,plankD:0x605050,glass:0x1c2830,
+    mat:'Grey brick / lime plaster',sky:0xaab4bc,fog:0x90a0a8,arch:'brooklyn'},
+  buenosaires: {name:'Buenos Aires Beaux-Arts',period:'c. 1880–1930',
+    s1:0xe4d8b8,s2:0xccc0a0,s3:0xb4a880,mortar:0x989068,
+    plank:0xccc098,plankD:0xb4a880,glass:0x1e3048,
+    mat:'Limestone / Beaux-Arts render',sky:0xb8c4cc,fog:0xa0acb4,arch:'paris'},
+};
+
+// ─── BUILDING PARAMETERS ──────────────────────────────────────────
+const UNITS=3, UW=5.0, UD=8.0, FL=3, FH=4.2, WT=0.55;
+const TW=UW*UNITS;   // 15m wide
+const WIN_W=1.8, WIN_H=2.4; // window opening
+const DOOR_W=1.4, DOOR_H=3.2; // door opening
+const PLANK_W=0.5, PLANK_T=0.18, PLANK_L=UD-WT*2; // floor plank dims
+const N_PLANKS=Math.floor((UW-WT)/PLANK_W); // planks per unit
+
+// ─── SEQUENCE STAGES ─────────────────────────────────────────────
+// Default stages (demo mode, no schedule loaded)
+const STAGES_DEFAULT=[
+  'Foundation plinth',
+  'Ground floor walls',
+  'Ground floor MEP',
+  'Ground floor planks',
+  'First floor walls',
+  'First floor MEP',
+  'First floor planks',
+  'Second floor walls',
+  'Cornice & parapet',
+  'Roof slabs & chimneys',
+];
+const STAGE_AT_DEFAULT=[0,0.5,1.8,2.5,4.0,5.2,6.0,7.5,9.0,10.2];
+
+// Live stages — replaced by schedule data when available
+let _activeStages = STAGES_DEFAULT.slice();
+let _activeStageAt = STAGE_AT_DEFAULT.slice();
+let _scheduleData = null;   // full schedule payload from adri:platform
+let _4dScrubWeek  = 0;      // current scrub position in construction weeks
+let _4dMode       = false;  // true when a real schedule is loaded
+
+// ── SNAP-TAG → 4D tint color ─────────────────────────────────────
+// Returns a hex color that gets blended over the base material when
+// rendering in 4D mode. Each construction phase type has a distinct tint.
+const SNAP_TINT = {
+  preconstruction: 0x1e5474,  // blue — design/permit
+  mobilisation:    0x66717c,  // grey — site setup
+  excavation:      0x5a3a18,  // dark brown — earthworks
+  foundation:      0x7c5a10,  // amber-brown — concrete substructure
+  structure:       0xb87820,  // warm amber — walls/columns
+  mep_rough:       0x3a6898,  // blue — pipe/duct/conduit
+  envelope:        0x286040,  // green — facade/cladding
+  finishes:        0x9e3432,  // red — interior finishes
+  closeout:        0x66717c,  // grey — commissioning
+};
+
+function _4dTint(snapTag){
+  return SNAP_TINT[snapTag] || SNAP_TINT.structure;
+}
+
+// Build _activeStages and _activeStageAt from a schedule payload
+function _buildStagesFromSchedule(sched){
+  if(!sched || !sched.phases || !sched.phases.length) return;
+  _scheduleData = sched;
+  _4dMode = true;
+
+  // Map phases to stage labels and timing offsets (normalised to animation time)
+  // We use the phase index as a proxy for delay — each phase gets a proportional
+  // window in the animation timeline so the visual playback matches real duration
+  const phases = sched.phases.filter(p => !p.parallel);
+  const totalWks = sched.totalWks || phases.reduce((s,p)=>s+p.durationWks,0) || 1;
+  let cursor = 0;
+  _activeStages = [];
+  _activeStageAt = [];
+
+  phases.forEach(p => {
+    _activeStages.push(p.label);
+    // Map real weeks to animation-elapsed-time scale (~11 units = full build)
+    const t = (cursor / totalWks) * 11;
+    _activeStageAt.push(parseFloat(t.toFixed(2)));
+    cursor += p.durationWks;
+  });
+
+  // Update the scrubber range to match total weeks
+  const scrub = document.getElementById('spdCtrl');
+  if(scrub){
+    scrub.min = 0;
+    scrub.max = Math.round(totalWks);
+    scrub.step = 1;
+    scrub.value = 0;
+  }
+  const spdLbl = document.getElementById('spdLabel');
+  if(spdLbl) spdLbl.textContent = 'WEEK';
+
+  // Show 4D legend
+  const legend = document.getElementById('legend4d');
+  if(legend) legend.style.display = 'block';
+  // Show 4D badge in suite bar
+  _show4DBadge(sched);
+}
+
+// ─── THREE.JS ────────────────────────────────────────────────────
+const cvs=document.getElementById('c'), wrap=document.getElementById('cv-wrap');
+const renderer=new THREE.WebGLRenderer({canvas:cvs,antialias:true});
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;
+renderer.localClippingEnabled=true;
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(38,1,0.1,600);
+function resize(){const w=wrap.clientWidth,h=wrap.clientHeight;
+  renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+resize();window.addEventListener('resize',resize);
+
+const cs={theta:-0.65,phi:1.05,r:46,ty:8};
+let drag=false,lx=0,ly=0;
+cvs.addEventListener('mousedown',e=>{
+  lx=e.clientX;ly=e.clientY;
+  drag=true;
+});
+window.addEventListener('mouseup',()=>drag=false);
+window.addEventListener('mousemove',e=>{
+  updatePointerWorld(e);
+  if(!drag)return;
+  cs.theta-=(e.clientX-lx)*0.005;
+  cs.phi=Math.max(0.08,Math.min(1.48,cs.phi+(e.clientY-ly)*0.005));
+  lx=e.clientX;ly=e.clientY;setCam();});
+cvs.addEventListener('wheel',e=>{cs.r=Math.max(16,Math.min(110,cs.r+e.deltaY*0.03));setCam();},{passive:true});
+window.addEventListener('keydown',e=>{
+  if(e.key===' '){e.preventDefault();doSnap();}
+  if(e.key.toLowerCase()==='r')doReset();
+  if(e.key.toLowerCase()==='l')toggleLabels();
+  if(e.key.toLowerCase()==='g')toggleGhosts();
+  if(e.key.toLowerCase()==='x')toggleSection();
+});
+function setCam(){
+  const s=new THREE.Spherical(cs.r,cs.phi,cs.theta);
+  camera.position.setFromSpherical(s);
+  camera.position.y+=cs.ty;camera.lookAt(0,cs.ty,0);}
+
+const groundPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+function updatePointerWorld(e){
+  const r=cvs.getBoundingClientRect();
+  mouse.x=(e.clientX-r.left)/r.width*2-1;
+  mouse.y=-((e.clientY-r.top)/r.height)*2+1;
+  raycaster.setFromCamera(mouse,camera);
+  raycaster.ray.intersectPlane(groundPlane,pointerWorld);
+}
+
+// Lights
+const ambL=new THREE.AmbientLight(0xfff4e8,0.42);scene.add(ambL);
+const sunL=new THREE.DirectionalLight(0xfff0d0,1.05);
+sunL.position.set(12,22,10);sunL.castShadow=true;
+sunL.shadow.mapSize.set(2048,2048);
+sunL.shadow.camera.near=1;sunL.shadow.camera.far=130;
+sunL.shadow.camera.left=-30;sunL.shadow.camera.right=30;
+sunL.shadow.camera.top=30;sunL.shadow.camera.bottom=-30;
+scene.add(sunL);
+const fillL=new THREE.DirectionalLight(0xc0d0e0,0.22);fillL.position.set(-8,6,-10);scene.add(fillL);
+const rimL=new THREE.DirectionalLight(0xffd7a0,0.28);rimL.position.set(-18,18,16);scene.add(rimL);
+
+const gnd=new THREE.Mesh(new THREE.PlaneGeometry(300,300),
+  new THREE.MeshPhongMaterial({color:0x282620,shininess:3,
+    polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1}));
+gnd.rotation.x=-Math.PI/2;gnd.receiveShadow=true;scene.add(gnd);
+
+// ─── HELPERS ─────────────────────────────────────────────────────
+function blendC(c1,c2,t){
+  const r=((c1>>16)&255)+((((c2>>16)&255)-((c1>>16)&255))*t);
+  const g=((c1>>8)&255)+((((c2>>8)&255)-((c1>>8)&255))*t);
+  const b=(c1&255)+(((c2&255)-(c1&255))*t);
+  return(Math.round(r)<<16)|(Math.round(g)<<8)|Math.round(b);}
+function M(hex,sh=10){return new THREE.MeshPhongMaterial({color:hex,shininess:sh});}
+function MT(hex,op=0.4){return new THREE.MeshPhongMaterial({color:hex,transparent:true,opacity:op,shininess:90});}
+function BOX(w,h,d,mat,px=0,py=0,pz=0){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  m.position.set(px,py,pz);m.castShadow=true;m.receiveShadow=true;return m;}
+function CYL(r,h,mat,seg=10){
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,seg),mat);
+  m.castShadow=true;return m;}
+function TRI(w,h,d,mat,px=0,py=0,pz=0){
+  const sh=new THREE.Shape();
+  sh.moveTo(-w/2,0);sh.lineTo(w/2,0);sh.lineTo(0,h);sh.lineTo(-w/2,0);
+  const geo=new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:false});
+  const m=new THREE.Mesh(geo,mat);
+  m.position.set(px,py,pz-d/2);m.castShadow=true;m.receiveShadow=true;return m;
+}
+function addRail(grp,w,y,z,C){
+  const iron=M(0x141410,20);
+  grp.add(BOX(w,.04,.04,iron,0,y+.38,z));
+  grp.add(BOX(w,.035,.035,iron,0,y+.14,z));
+  for(let i=0;i<Math.max(5,Math.floor(w/.18));i++){
+    const x=-w/2+i*w/(Math.max(5,Math.floor(w/.18))-1);
+    grp.add(BOX(.025,.52,.025,iron,x,y+.22,z));
+  }
+}
+
+function addCoursedLimestone(grp,w,h,d,C,opts={}){
+  const frontZ=d/2+.035;
+  const courseH=opts.courseH||.38;
+  const blockW=opts.blockW||.72;
+  const mortar=M(blendC(C.mortar,0x000000,.18),2);
+  const rows=Math.max(2,Math.floor(h/courseH));
+  for(let r=0;r<rows;r++){
+    const y=(r+.5)*h/rows;
+    const offset=r%2?blockW*.5:0;
+    const cols=Math.ceil(w/blockW)+2;
+    for(let c=0;c<cols;c++){
+      const x=-w/2+c*blockW+offset;
+      if(x<-w/2-.35||x>w/2+.35) continue;
+      const bw=Math.min(blockW*.92,w);
+      const color=blendC(C.s1,C.s2,((r+c)%5)*.055+.04);
+      const block=BOX(bw,h/rows*.86,.28,M(color,8),x,y,frontZ);
+      block.userData.stoneBlock=true;
+      grp.add(block);
+    }
+    grp.add(BOX(w+.06,.018,.32,mortar,0,r*h/rows,frontZ+.01));
+  }
+  // back and side mass read as structural depth, while front stays individual stonework
+  grp.add(BOX(w,h*.94,.16,M(blendC(C.s2,C.s3,.15),7),0,h*.47,-d/2+.05));
+  grp.add(BOX(.16,h*.94,d,M(blendC(C.s2,C.s3,.10),7),-w/2+.08,h*.47,0));
+  grp.add(BOX(.16,h*.94,d,M(blendC(C.s2,C.s3,.10),7),w/2-.08,h*.47,0));
+}
+
+function addOpeningStones(grp,x,y,z,w,h,C,type='window'){
+  const trim=M(blendC(C.s1,C.s3,.24),18);
+  const dark=M(0x0b0a08,4);
+  const glass=MT(C.glass,.45);
+  if(type==='door'){
+    grp.add(BOX(w,h,.08,dark,x,y,z+.04));
+  }else{
+    grp.add(BOX(w*.82,h*.82,.06,glass,x,y,z+.04));
+  }
+  grp.add(BOX(.16,h+.28,.22,trim,x-w/2-.12,y,z+.08));
+  grp.add(BOX(.16,h+.28,.22,trim,x+w/2+.12,y,z+.08));
+  grp.add(BOX(w+.42,.18,.24,trim,x,y+h/2+.14,z+.09));
+  grp.add(BOX(w+.34,.12,.24,trim,x,y-h/2-.1,z+.1));
+  if(type==='door'){
+    grp.add(TRI(w+.52,.38,.24,trim,x,y+h/2+.22,z+.13));
+  }
+}
+
+function addInteriorAndMEP(grp,w,h,d,C,f,c,part){
+  const wall=M(blendC(C.s1,0xffffff,.10),9);
+  const water=M(0x3a6898,60), waste=M(0x607070,30), duct=M(0xb85820,35), elec=M(0x70a020,45);
+  // interior partitions, visible because modules fly in before joining
+  if(w>1.6) grp.add(BOX(.08,h*.72,d*.62,wall,-w*.18,h*.42,-d*.08));
+  if(d>4.2) grp.add(BOX(w*.56,h*.62,.08,wall,w*.12,h*.38,-d*.18));
+  // MEP as small embedded service runs
+  grp.add(BOX(.055,h*.76,.055,water,-w*.36,h*.42,-d*.18));
+  grp.add(BOX(.065,h*.64,.065,waste,w*.34,h*.36,-d*.24));
+  grp.add(BOX(w*.62,.045,.045,elec,0,h*.78,-d*.34));
+  if((f+c)%2===0) grp.add(BOX(w*.52,.16,.26,duct,0,h*.82,-d*.05));
+  // sleeves through stone
+  const sleeve=M(0x202020,12);
+  grp.add(BOX(.18,.18,.06,sleeve,-w*.36,h*.72,d/2+.19));
+  grp.add(BOX(.15,.15,.06,sleeve,w*.34,h*.28,d/2+.19));
+}
+
+function buildResonanceField(){
+  resonanceGroup.clear();
+  const mat1=new THREE.MeshBasicMaterial({color:0xd4a060,transparent:true,opacity:.34,side:THREE.DoubleSide});
+  const mat2=new THREE.MeshBasicMaterial({color:0x8ab840,transparent:true,opacity:.22,side:THREE.DoubleSide});
+  for(let i=0;i<3;i++){
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(1.05+i*.38,.018,8,72),i%2?mat2:mat1);
+    ring.rotation.x=Math.PI/2;
+    ring.userData.phase=i*.7;
+    resonanceGroup.add(ring);
+  }
+  const waveMat=new THREE.LineBasicMaterial({color:0xd4a060,transparent:true,opacity:.28});
+  for(let j=0;j<4;j++){
+    const pts=[];
+    for(let i=0;i<32;i++){
+      const x=-1.5+i/31*3;
+      pts.push(new THREE.Vector3(x,Math.sin(i*.8+j)*.08,0));
+    }
+    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),waveMat);
+    line.userData.phase=j*.5;
+    resonanceGroup.add(line);
+  }
+  resonanceGroup.visible=false;
+}
+function addStyleSignature(grp,type,h,C,kind){
+  const arch=C.arch||'vienna';
+  const trim=M(blendC(C.s1,C.s3,.25),18);
+  const dark=M(blendC(C.s3,0x202020,.35),8);
+  if(kind==='opening'){
+    if(arch==='paris'){
+      grp.add(BOX(2.25,.12,.18,trim,0,h*.03,WT*.46));
+      grp.add(BOX(.18,.28,.18,trim,-1.05,h*.03,WT*.48));
+      grp.add(BOX(.18,.28,.18,trim,1.05,h*.03,WT*.48));
+      addRail(grp,2.2,-h*.30,WT*.78,C);
+    }else if(arch==='florence'){
+      grp.add(TRI(2.3,.55,.18,trim,0,h*.25,WT*.5));
+      grp.add(BOX(2.45,.16,.24,trim,0,-h*.34,WT*.55));
+      for(let r=0;r<5;r++) grp.add(BOX(UW+.04,.02,.05,dark,0,-h/2+.26+r*.22,WT*.44));
+    }else if(arch==='vienna'){
+      grp.add(TRI(2.0,.42,.16,trim,0,h*.27,WT*.48));
+      grp.add(BOX(.16,h*.92,.14,trim,-1.1,0,WT*.47));
+      grp.add(BOX(.16,h*.92,.14,trim,1.1,0,WT*.47));
+      if(type==='window') addRail(grp,2.1,-h*.31,WT*.75,C);
+    }else if(arch==='edinburgh'){
+      grp.add(TRI(1.8,.7,.16,trim,0,h*.28,WT*.48));
+      grp.add(BOX(.18,h*.72,.16,trim,-.95,-.02,WT*.47));
+      grp.add(BOX(.18,h*.72,.16,trim,.95,-.02,WT*.47));
+    }else if(arch==='jerusalem'){
+      grp.add(BOX(2.25,.12,.22,trim,0,-h*.35,WT*.64));
+      grp.add(BOX(2.05,.16,.18,trim,0,h*.22,WT*.48));
+      grp.add(BOX(.12,1.1,.16,dark,-1.05,-.05,WT*.5));
+    }else if(arch==='brooklyn'){
+      grp.add(BOX(2.35,.14,.2,trim,0,-h*.35,WT*.58));
+      grp.add(BOX(.18,h*.82,.16,trim,-1.05,-.03,WT*.5));
+      grp.add(BOX(.18,h*.82,.16,trim,1.05,-.03,WT*.5));
+      if(type==='door'){
+        grp.add(BOX(2.6,.16,1.35,trim,0,-h*.58,WT*1.35));
+        grp.add(BOX(.38,.12,1.2,trim,-1.35,-h*.46,WT*1.25));
+        grp.add(BOX(.38,.12,1.2,trim,1.35,-h*.46,WT*1.25));
+      }
+    }else if(arch==='london'){
+      const white=M(0xf2eee2,24);
+      grp.add(BOX(2.1,.11,.16,white,0,h*.22,WT*.5));
+      grp.add(BOX(2.15,.12,.16,white,0,-h*.36,WT*.54));
+      grp.add(BOX(.09,h*.74,.14,white,-.98,-.06,WT*.48));
+      grp.add(BOX(.09,h*.74,.14,white,.98,-.06,WT*.48));
+      if(type==='door') grp.add(BOX(2.45,.28,.2,white,0,h*.22,WT*.52));
+    }
+  }
+}
+
+// Mortar lines on a block face
+function addMortar(grp,w,h,d,mc,courseH=0.38){
+  const mm=M(mc,2);
+  for(let i=1;i<Math.floor(h/courseH);i++){
+    const s=BOX(w+0.005,0.016,d+0.005,mm,0,-h/2+i*courseH,0);
+    grp.add(s);}
+  // head joints
+  const hj=Math.floor(w/0.55);
+  for(let j=1;j<hj;j++){
+    const s=BOX(0.014,h+0.005,d+0.005,mm,-w/2+j*(w/hj),0,0);
+    grp.add(s);}
+}
+
+// ─── ELEMENT BUILDERS ────────────────────────────────────────────
+
+// Large wall section with window or door opening
+// Type: 'window' | 'door' | 'solid' | 'corner'
+function makeWallSection(type,h,C,chases=[]){
+  const grp=new THREE.Group();
+  const sc=M(blendC(C.s1,C.s2,Math.random()*0.4),10);
+  const trimM=M(blendC(C.s1,C.s3,0.15),20);
+  const glassM=MT(C.glass,0.38);
+
+  if(type==='solid'||type==='endwall'){
+    const w=(type==='endwall')? UD : UW;
+    const main=BOX(w,h,WT,sc);grp.add(main);
+    addMortar(grp,w,h,WT,C.mortar);
+    grp.userData.info={cat:'WALL SECTION',name:type==='endwall'?'End wall':'Solid wall section',
+      dims:`${w.toFixed(1)}×${h.toFixed(1)}×${WT} m`,mat:C.mat,
+      wt:`${(w*h*WT*2.2).toFixed(1)} t`,chases};
+  }
+
+  if(type==='window'||type==='door'){
+    const ow=type==='door'?DOOR_W:WIN_W;
+    const oh=type==='door'?DOOR_H:WIN_H;
+    const py=type==='door'?oh/2:oh/2+0.8; // door at floor, window raised
+    const oy=type==='door'?oh/2-h/2:oh/2+0.8-h/2;
+    // Left pier
+    const lW=(UW-ow)/2-0.04;
+    const lP=BOX(lW,h,WT,M(blendC(C.s1,C.s2,Math.random()*.4),10));
+    lP.position.set(-ow/2-lW/2,0,0);grp.add(lP);
+    addMortar(grp,lW,h,WT,C.mortar); // simplified
+    // Right pier
+    const rP=BOX(lW,h,WT,M(blendC(C.s1,C.s2,Math.random()*.4),10));
+    rP.position.set(ow/2+lW/2,0,0);grp.add(rP);
+    // Lintel
+    const lintelH=0.3;
+    const lintel=BOX(ow+0.1,lintelH,WT+0.08,trimM);
+    lintel.position.set(0,oy+oh/2+lintelH/2,0);grp.add(lintel);
+    // Sill
+    if(type==='window'){
+      const sill=BOX(ow+0.2,0.14,WT+0.1,trimM);
+      sill.position.set(0,oy-oh/2+0.07,0.04);grp.add(sill);}
+    // Glass
+    const glass=BOX(ow-0.08,oh-0.06,0.05,glassM);
+    glass.position.set(0,oy,0.01);grp.add(glass);
+    // Reveal (slight depth recess around opening)
+    const revL=BOX(0.08,oh,0.1,trimM,-ow/2-0.04,oy,0.08);grp.add(revL);
+    const revR=BOX(0.08,oh,0.1,trimM, ow/2+0.04,oy,0.08);grp.add(revR);
+    addStyleSignature(grp,type,h,C,'opening');
+
+    grp.userData.info={
+      cat:type==='door'?'ENTRY PORTAL':'FACADE SECTION',
+      name:type==='door'?`Arched entry door`:`Window wall — ${UW.toFixed(0)}m bay`,
+      dims:`${UW.toFixed(1)}×${h.toFixed(1)}×${WT} m`,
+      mat:C.mat,wt:`${(UW*h*WT*2.2*0.65).toFixed(1)} t`,chases};
+  }
+
+  // Chase cylinders (MEP embedded in wall)
+  chases.forEach((type,ci)=>{
+    const col={pipe:0x3a6898,duct:0xb85820,elec:0x70a020}[type]||0x606060;
+    const r={pipe:0.08,duct:0.11,elec:0.05}[type]||0.07;
+    const cy=CYL(r,h*1.01,M(col,60));
+    cy.position.set((ci===0?-UW*.24:UW*.24),0,WT*.1);
+    grp.add(cy);
+    // Coupling rings every floor
+    for(let f=0;f<=FL;f++){
+      const ring=new THREE.Mesh(
+        new THREE.TorusGeometry(r*1.7,0.025,6,12),
+        M(blendC(col,0x888888,0.3),20));
+      ring.rotation.x=Math.PI/2;
+      ring.position.set((ci===0?-UW*.24:UW*.24),-h/2+f*(h/FL),WT*.1);
+      grp.add(ring);}
+  });
+  return grp;
+}
+
+// MEP assembly: visible pipe + duct runs floating in as a layer
+function makeMEP(floorY,h,C){
+  const grp=new THREE.Group();
+  const pipeM=M(0x3a6898,60); const ductM=M(0xb85820,40); const elecM=M(0x70a020,50);
+
+  // Main water risers (3, one per unit)
+  for(let u=0;u<UNITS;u++){
+    const rx=u*UW-TW/2+UW*.38;
+    const riser=CYL(0.07,h,pipeM);
+    riser.position.set(rx,0,-UD*.1);grp.add(riser);
+    // T-branches at each floor
+    const branch=BOX(UW*.55,0.07,0.07,pipeM,rx,0,UD*.1);grp.add(branch);}
+
+  // HVAC duct trunks (horizontal runs at ceiling)
+  const ductY=h*0.42;
+  const mainDuct=BOX(TW*.85,0.22,0.28,ductM,0,ductY,0); grp.add(mainDuct);
+  // Drops per unit
+  for(let u=0;u<UNITS;u++){
+    const ux=u*UW-TW/2+UW/2;
+    const drop=BOX(0.22,h*.35,0.22,ductM,ux,ductY-h*.18,UD*.2);grp.add(drop);}
+
+  // Drain stack (grey)
+  const drainM=M(0x708080,40);
+  const drain=CYL(0.06,h,drainM);
+  drain.position.set(-TW/2+UW*.65,0,UD*.12);grp.add(drain);
+
+  // Electrical conduit
+  const elecRun=BOX(TW*.8,0.04,0.04,elecM,0,h*.38,-UD*.25);grp.add(elecRun);
+  for(let u=0;u<UNITS;u++){
+    const panel=BOX(0.35,0.5,0.06,M(0x585850,20),
+      u*UW-TW/2+UW*.8,h*.38-0.1,-UD/2+WT+0.04);grp.add(panel);}
+
+  grp.userData.info={
+    cat:'MEP LAYER',name:`Mechanical rough-in — floor ${Math.round(floorY/FH)+1}`,
+    dims:`${TW.toFixed(0)}×${h.toFixed(1)}×${UD.toFixed(0)} m zone`,
+    mat:'Steel pipe / galv. duct / conduit',wt:'2.8 t',
+    chases:['pipe','duct','elec']};
+  return grp;
+}
+
+// Floor planks — individual elongated stones that fly in row by row
+function makePlanks(floorY,C){
+  const planks=[];
+  for(let u=0;u<UNITS;u++){
+    const uCx=u*UW-TW/2+UW/2;
+    for(let p=0;p<N_PLANKS;p++){
+      const grp=new THREE.Group();
+      const vary=Math.random();
+      const pc=new THREE.MeshPhongMaterial({
+        color:blendC(C.plank,C.plankD,vary*.6),
+        shininess:vary>0.5?15:8,
+        polygonOffset:true,
+        polygonOffsetFactor:-1,
+        polygonOffsetUnits:-1,
+      });
+      const plank=BOX(PLANK_W-0.015,PLANK_T,PLANK_L,pc);
+      grp.add(plank);
+      // Joint gap on side face — recessed so no coplanar z-fight
+      const chamM=M(blendC(C.mortar,0x000000,0.25),3);
+      const cL=BOX(0.012,PLANK_T-0.004,PLANK_L+0.002,chamM,PLANK_W/2-0.006,0,0);
+      grp.add(cL);
+      grp.userData.info={
+        cat:'FLOOR PLANK',name:`Stone floor plank`,
+        dims:`${PLANK_W}×${PLANK_T}×${PLANK_L.toFixed(1)} m`,
+        mat:C.mat,wt:`${(PLANK_W*PLANK_T*PLANK_L*2.5).toFixed(2)} t`,chases:[]};
+      planks.push({grp,
+        tx:uCx-UW/2+WT+PLANK_W/2+p*PLANK_W,
+        ty:floorY+PLANK_T/2,
+        tz:0,
+        plankIdx:p, unitIdx:u});
+    }
+  }
+  return planks;
+}
+
+// Cornice
+function makeCornice(C){
+  const grp=new THREE.Group();
+  const cm=M(blendC(C.s1,C.s3,0.2),22);
+  const arch=C.arch||'vienna';
+  if(arch==='paris'){
+    const slate=M(0x34383e,8), zinc=M(0x777d80,16);
+    grp.add(BOX(TW+0.5,.28,WT+0.45,cm,0,.14,.16));
+    grp.add(TRI(TW+1.1,1.55,2.0,slate,0,.3,.9));
+    for(let i=0;i<UNITS;i++){
+      const x=i*UW-TW/2+UW/2;
+      grp.add(BOX(1.1,.82,.15,zinc,x,.92,1.92));
+      grp.add(TRI(1.18,.32,.18,zinc,x,1.30,1.99));
+    }
+  }else if(arch==='edinburgh'){
+    const slate=M(0x303838,6), rub=M(blendC(C.s2,C.s3,.35),10);
+    grp.add(BOX(TW+.3,.24,WT+.3,rub,0,.12,.08));
+    for(let b=0;b<12;b++) if(b%2===0) grp.add(BOX(.65,.58,WT+.18,rub,-TW/2+.4+b*(TW-0.8)/11,.48,.05));
+    grp.add(TRI(TW+.4,1.4,2.1,slate,0,.35,.75));
+    [-TW/2-.25,TW/2+.25].forEach(x=>{
+      const t=CYL(.42,1.9,rub,14);t.position.set(x,.82,.08);grp.add(t);
+      const cap=CYL(.5,.24,slate,14);cap.position.set(x,1.9,.08);grp.add(cap);
+    });
+  }else if(arch==='florence'){
+    const heavy=M(blendC(C.s3,0x604020,.25),18);
+    grp.add(BOX(TW+.8,.78,WT+.7,heavy,0,.38,.25));
+    grp.add(BOX(TW+1.0,.18,WT+.92,cm,0,.86,.34));
+    for(let i=0;i<Math.floor((TW+.4)/.5);i++) grp.add(BOX(.25,.24,WT+.28,heavy,-TW/2-.1+i*.5,-.04,.24));
+    grp.add(BOX(TW+.45,.9,WT,M(blendC(C.s2,C.s3,.2),10),0,1.38,0));
+  }else if(arch==='jerusalem'){
+    const cap=M(blendC(C.s1,0xffffff,.08),14);
+    grp.add(BOX(TW+.45,.34,WT+.62,cap,0,.18,.22));
+    grp.add(BOX(TW+.2,.8,WT,M(blendC(C.s2,C.s3,.14),10),0,.86,0));
+    for(let i=0;i<UNITS;i++) grp.add(BOX(1.5,.18,.85,cap,i*UW-TW/2+UW/2,.52,.62));
+  }else if(arch==='brooklyn'){
+    const cap=M(blendC(C.s1,0xffffff,.06),18), dark=M(blendC(C.s3,0x120c08,.35),8);
+    grp.add(BOX(TW+.35,.38,WT+.42,cap,0,.2,.18));
+    grp.add(BOX(TW+.1,.72,WT,dark,0,.78,0));
+    for(let i=0;i<UNITS;i++) grp.add(BOX(1.15,.5,.28,cap,i*UW-TW/2+UW/2,1.22,.18));
+  }else if(arch==='london'){
+    const slate=M(0x30343a,8), white=M(0xf0eadc,22);
+    grp.add(BOX(TW+.25,.22,WT+.28,white,0,.12,.08));
+    grp.add(TRI(TW+.45,1.0,1.7,slate,0,.2,.65));
+    for(let i=0;i<UNITS;i++) grp.add(BOX(.72,.72,.2,white,i*UW-TW/2+UW/2,.75,1.55));
+  }else{
+    const main=BOX(TW+0.4,0.55,WT+0.5,cm,0,0.28,0.22); grp.add(main);
+    const crown=BOX(TW+0.6,0.2,WT+0.7,M(blendC(C.s1,0xffffff,0.06),28),0,0.65,0.3);grp.add(crown);
+    const para=BOX(TW+0.5,0.7,WT,M(blendC(C.s2,C.s3,0.2),10),0,1.2,0);grp.add(para);
+    for(let i=0;i<Math.floor((TW+0.4)/0.38);i++)
+      grp.add(BOX(0.18,0.22,WT+0.2,cm,-TW/2-0.1+i*0.38,-0.14,0.25));
+  }
+  grp.userData.info={cat:'CORNICE',name:'Projecting cornice with dentils and parapet',
+    dims:`${(TW+0.6).toFixed(1)}×1.5×${(WT+0.7).toFixed(2)} m`,
+    mat:C.mat,wt:'5.8 t',chases:[]};
+  return grp;
+}
+
+function addStyleMassingPieces(C,roofY){
+  const arch=C.arch||'vienna';
+  const trim=M(blendC(C.s1,C.s3,.22),18);
+  const dark=M(blendC(C.s3,0x18100a,.35),8);
+  const glass=MT(C.glass,.42);
+  function piece(grp,tx,ty,tz,delay,cat,name,wt='1.2 t'){
+    grp.userData.info={cat,name,dims:'style-specific assembly module',mat:C.mat,wt,chases:[]};
+    const from=spawnFrom(tx,ty,tz,delay<9?'front':'above');
+    addItem(grp,tx,ty,tz,from.x,from.y+4,from.z,delay,grp.userData.info);
+  }
+  if(arch==='brooklyn'){
+    for(let u=0;u<UNITS;u++){
+      const x=u*UW-TW/2+UW/2;
+      const stoop=new THREE.Group();
+      for(let s=0;s<6;s++) stoop.add(BOX(2.4-s*.16,.18,1.15+s*.18,trim,0,s*.13,s*.16));
+      stoop.add(BOX(.18,.72,1.55,trim,-1.35,.48,.35));
+      stoop.add(BOX(.18,.72,1.55,trim,1.35,.48,.35));
+      piece(stoop,x,.08,UD/2+1.02,1.25+u*.08,'STOOP MODULE','Brownstone entry stoop','2.1 t');
+      const bay=new THREE.Group();
+      bay.add(BOX(1.35,FH*1.72,.7,trim,0,0,.18));
+      bay.add(BOX(1.05,FH*1.52,.08,glass,0,0,.56));
+      piece(bay,x,FH*1.55,UD/2+.42,5.05+u*.12,'BAY WINDOW','Projecting brownstone bay','1.8 t');
+    }
+  }else if(arch==='london'){
+    const white=M(0xf0eadc,22), slate=M(0x30343a,8);
+    for(let u=0;u<UNITS;u++){
+      const x=u*UW-TW/2+UW/2;
+      const port=new THREE.Group();
+      port.add(BOX(2.2,.18,.95,white,0,2.7,.1));
+      port.add(BOX(2.45,.16,1.05,white,0,.12,.1));
+      [-.85,.85].forEach(px=>port.add(CYL(.08,2.6,white,12).translateX(px)));
+      piece(port,x,1.35,UD/2+.72,1.35+u*.1,'PORTICO','Georgian entry portico','1.4 t');
+      const gable=new THREE.Group();
+      gable.add(TRI(UW*.88,1.1,1.4,slate,0,0,.4));
+      gable.add(BOX(.78,.66,.16,white,0,.28,1.14));
+      piece(gable,x,roofY+.62,0,9.55+u*.15,'ROOF GABLE','Georgian pitched roof gable','1.1 t');
+    }
+  }else if(arch==='paris'){
+    const iron=M(0x111111,20), stone=M(blendC(C.s1,C.s3,.14),18);
+    [FH*1.02,FH*2.02].forEach((y,idx)=>{
+      const band=new THREE.Group();
+      band.add(BOX(TW+.55,.16,.72,stone,0,0,0));
+      addRail(band,TW+.75,.05,.24,C);
+      piece(band,0,y,UD/2+.54,5.0+idx*.5,'BALCONY BAND',idx?'Upper Haussmann balcony':'Continuous piano nobile balcony','2.6 t');
+    });
+    [-TW/2-.18,TW/2+.18].forEach((x,i)=>{
+      const pav=new THREE.Group();
+      pav.add(BOX(1.2,FH*2.4,.9,stone,0,0,0));
+      pav.add(TRI(1.35,1.2,1.2,M(0x34383e,8),0,FH*1.22,.35));
+      piece(pav,x,FH*1.35,UD/2+.18,6.2+i*.25,'CORNER PAVILION','Haussmann end pavilion','3.4 t');
+    });
+  }else if(arch==='florence'){
+    const heavy=M(blendC(C.s3,0x4a2812,.24),18);
+    const arcade=new THREE.Group();
+    for(let u=0;u<UNITS;u++){
+      const x=u*UW-TW/2+UW/2;
+      arcade.add(BOX(.2,2.3,.28,heavy,x-UW*.28,1.15,0));
+      arcade.add(BOX(.2,2.3,.28,heavy,x+UW*.28,1.15,0));
+      arcade.add(TRI(UW*.68,.78,.3,heavy,x,2.1,.02));
+      arcade.add(BOX(UW*.72,.16,.32,heavy,x,2.08,.04));
+    }
+    piece(arcade,0,0,UD/2+.72,2.05,'ARCADE BASE','Palazzo ground-floor arcade','4.8 t');
+    const tower=new THREE.Group();
+    tower.add(BOX(2.4,FH*2.9,2.2,heavy,0,0,0));
+    tower.add(BOX(2.75,.42,2.55,M(blendC(C.s1,C.s3,.15),22),0,FH*1.48,0));
+    piece(tower,TW/2+1.35,FH*1.45,-.8,7.9,'PALAZZO TOWER','Offset palazzo tower bay','5.7 t');
+  }else if(arch==='edinburgh'){
+    const rub=M(blendC(C.s2,C.s3,.28),10), slate=M(0x303838,6);
+    const tower=new THREE.Group();
+    tower.add(BOX(2.4,FH*3.4,2.0,rub,0,0,0));
+    tower.add(CYL(1.08,.34,slate,16).translateY(FH*1.78));
+    tower.add(TRI(2.2,1.3,2.0,slate,0,FH*1.75,.45));
+    for(let b=0;b<4;b++) tower.add(BOX(.36,.42,.28,rub,-.8+b*.54,FH*1.55,.9));
+    piece(tower,-TW/2-1.1,FH*1.55,UD/2-.25,6.9,'BARONIAL TOWER','Asymmetric Scottish tower mass','6.2 t');
+    const gable=new THREE.Group();
+    gable.add(TRI(TW*.55,2.0,1.2,rub,0,0,.15));
+    piece(gable,TW*.18,roofY+.6,UD/2+.18,9.2,'CROW GABLE','Crow-stepped gable silhouette','2.0 t');
+  }else if(arch==='jerusalem'){
+    const stone=M(blendC(C.s1,C.s2,.18),12);
+    for(let u=0;u<UNITS;u++){
+      const x=u*UW-TW/2+UW/2;
+      const terrace=new THREE.Group();
+      terrace.add(BOX(UW*.78,.22,2.1,stone,0,0,0));
+      terrace.add(BOX(UW*.7,.62,.18,stone,0,.38,.95));
+      terrace.add(BOX(.16,.62,2.0,stone,-UW*.39,.38,0));
+      terrace.add(BOX(.16,.62,2.0,stone,UW*.39,.38,0));
+      piece(terrace,x,FH*2.85,UD/2+.3,8.2+u*.14,'ROOF TERRACE','Stepped Jerusalem roof terrace','2.3 t');
+    }
+    const stair=new THREE.Group();
+    for(let s=0;s<7;s++) stair.add(BOX(1.2,.16,.55,stone,0,s*.22,s*.38));
+    piece(stair,-TW/2-1.3,1.1,UD/2+.7,2.7,'EXTERNAL STAIR','Stone exterior stair run','1.6 t');
+  }else{
+    const pavilion=new THREE.Group();
+    pavilion.add(BOX(3.2,FH*2.8,.9,trim,0,0,0));
+    pavilion.add(BOX(3.7,.38,1.1,M(blendC(C.s1,0xffffff,.08),22),0,FH*1.42,.05));
+    pavilion.add(TRI(3.8,1.25,1.0,trim,0,FH*1.55,.08));
+    piece(pavilion,0,FH*1.5,UD/2+.36,6.4,'CENTRAL PAVILION','Ringstrasse central projection','4.1 t');
+  }
+}
+
+// ─── ANIMATION ITEMS ─────────────────────────────────────────────
+let ITEMS=[];
+let pGroup=new THREE.Group();scene.add(pGroup);
+let ghostGroup=new THREE.Group();scene.add(ghostGroup);
+let labelGroup=new THREE.Group();scene.add(labelGroup);
+let targetPulseGroup=new THREE.Group();scene.add(targetPulseGroup);
+let resonanceGroup=new THREE.Group();scene.add(resonanceGroup);
+let showGhosts=true, showLabels=false, autoOrbit=true, sectionCut=false;
+let playMode='crew', heldItem=null, hoverItem=null, score=0, streak=0;
+let pointerWorld=new THREE.Vector3(), targetMarker=null;
+const sectionPlane=new THREE.Plane(new THREE.Vector3(0,0,-1),0.4);
+
+function addItem(mesh,tx,ty,tz,fx,fy,fz,delay,info=null,snapTag=null){
+  if(info) mesh.userData.info=info;
+  if(snapTag) mesh.userData.snapTag=snapTag;
+  mesh.position.set(fx,fy,fz);mesh.visible=false;scene.add(mesh);
+  ITEMS.push({mesh,tx,ty,tz,fx,fy,fz,delay,t:0,landed:false,snapTag:snapTag||null,
+    rx0:(Math.random()-.5)*.2,ry0:(Math.random()-.5)*.1,rz0:(Math.random()-.5)*.12});
+}
+
+function parsedTons(info){
+  const raw=(info&&info.wt)||'';
+  const n=parseFloat(String(raw).replace(/[^0-9.]/g,''));
+  return Number.isFinite(n)?n:0;
+}
+
+function makeLabel(text){
+  const cnv=document.createElement('canvas'),ctx=cnv.getContext('2d');
+  cnv.width=256;cnv.height=64;
+  ctx.fillStyle='rgba(19,18,16,.82)';ctx.fillRect(0,0,256,64);
+  ctx.strokeStyle='rgba(212,160,96,.55)';ctx.strokeRect(.5,.5,255,63);
+  ctx.font='22px DM Mono, monospace';ctx.fillStyle='#d8ceb4';
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text.slice(0,22),128,33);
+  const tex=new THREE.CanvasTexture(cnv);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false,opacity:.92}));
+  sp.scale.set(2.8,.7,1);return sp;
+}
+
+function rebuildOverlays(){
+  ghostGroup.clear();labelGroup.clear();targetPulseGroup.clear();
+  ITEMS.forEach(it=>{
+    const box=new THREE.Box3().setFromObject(it.mesh);
+    const size=box.getSize(new THREE.Vector3());
+    if(size.length()===0) size.set(1,1,1);
+    const geo=new THREE.BoxGeometry(Math.max(.2,size.x),Math.max(.2,size.y),Math.max(.2,size.z));
+    const wire=new THREE.LineSegments(new THREE.EdgesGeometry(geo),
+      new THREE.LineBasicMaterial({color:0xd4a060,transparent:true,opacity:.16}));
+    wire.position.set(it.tx,it.ty,it.tz);ghostGroup.add(wire);
+    const ring=new THREE.Mesh(new THREE.RingGeometry(.55, .72, 28),
+      new THREE.MeshBasicMaterial({color:0xd4a060,transparent:true,opacity:.26,side:THREE.DoubleSide}));
+    ring.rotation.x=-Math.PI/2; ring.position.set(it.tx,Math.max(.04,it.ty-size.y*.5+.06),it.tz);
+    ring.visible=false; ring.userData.item=it; targetPulseGroup.add(ring);
+    const info=it.mesh.userData.info;
+    if(info){
+      const lbl=makeLabel(info.cat||'BLOCK');
+      lbl.position.set(it.tx,it.ty+Math.max(1.1,size.y*.55+.4),it.tz);
+      lbl.userData.item=it;labelGroup.add(lbl);
+    }
+  });
+  ghostGroup.visible=showGhosts;
+  labelGroup.visible=showLabels;
+}
+
+function findTargetMarker(it){
+  return targetPulseGroup.children.find(m=>m.userData.item===it)||null;
+}
+
+function setTargetMarker(it){
+  targetPulseGroup.children.forEach(m=>m.visible=false);
+  targetMarker=it?findTargetMarker(it):null;
+  if(targetMarker) targetMarker.visible=true;
+}
+
+function updateStats(){
+  const total=ITEMS.length||1;
+  const landed=ITEMS.filter(i=>i.landed).length;
+  const tons=ITEMS.filter(i=>i.landed).reduce((s,i)=>s+parsedTons(i.mesh.userData.info),0);
+  const mep=ITEMS.filter(i=>i.landed).reduce((s,i)=>s+((i.mesh.userData.info&&i.mesh.userData.info.chases)||[]).length,0);
+  document.getElementById('mPieces').textContent=`${landed}/${ITEMS.length}`;
+  document.getElementById('mTons').textContent=tons>=100?tons.toFixed(0)+'t':tons.toFixed(1)+'t';
+  document.getElementById('mMEP').textContent=mep;
+  document.getElementById('mStage').textContent=Math.round(landed/total*100)+'%';
+  document.getElementById('scoreVal').textContent=score;
+  document.getElementById('streakVal').textContent=streak;
+  document.getElementById('queueVal').textContent=Math.max(0,ITEMS.length-landed-(heldItem?1:0));
+}
+
+function setGameCopy(title,text){
+  document.getElementById('gameTitle').textContent=title;
+  document.getElementById('gameText').textContent=text;
+}
+
+function spawnFrom(tx,ty,tz,dir){
+  const s=14+Math.random()*8;
+  if(dir==='front') return{x:tx+(Math.random()-.5)*3,y:ty+5+Math.random()*8,z:tz+s};
+  if(dir==='back')  return{x:tx+(Math.random()-.5)*3,y:ty+5+Math.random()*8,z:tz-s};
+  if(dir==='left')  return{x:tx-s,y:ty+4+Math.random()*6,z:tz+(Math.random()-.5)*3};
+  if(dir==='right') return{x:tx+s,y:ty+4+Math.random()*6,z:tz+(Math.random()-.5)*3};
+  if(dir==='above') return{x:tx+(Math.random()-.5)*3,y:ty+s+Math.random()*8,z:tz+(Math.random()-.5)*3};
+  if(dir==='below') return{x:tx+(Math.random()-.5)*3,y:-10-Math.random()*4,z:tz+(Math.random()-.5)*3};
+  const a=Math.random()*Math.PI*2;return{x:tx+Math.cos(a)*s,y:ty+s*.6,z:tz+Math.sin(a)*s};
+}
+
+function yardSlot(i){
+  const col=i%6,row=Math.floor(i/6);
+  return{x:-18+col*2.35,y:.45+row*.08,z:13+row*1.85};
+}
+
+function stageManualYard(){
+  playMode='crew'; playing=false; elapsed=0; heldItem=null; hoverItem=null; setTargetMarker(null);
+  ITEMS.forEach((it,i)=>{
+    const p=yardSlot(i);
+    it.landed=false; it.mesh.visible=true;
+    it.mesh.position.set(p.x,p.y,p.z);
+    it.mesh.rotation.set(0,it.mesh.userData.landRy||0,0);
+    it.mesh.scale.setScalar(.72);
+  });
+  document.getElementById('btnSnap').textContent='▶ Start Sequence';
+  document.getElementById('btnSnap').className='btn ghost';
+  document.getElementById('seqName').textContent='Pieces staged and waiting';
+  document.getElementById('pf').style.width='0%';
+  setGameCopy('Pieces staged','Loose pieces are visible in the yard. Press Start Sequence and each piece will glide, align, and snap into place.');
+  document.getElementById('crewChip').textContent='sequence staged';
+  updateStats();
+}
+
+function nextLooseItem(){
+  return ITEMS.find(i=>!i.landed&&i!==heldItem) || null;
+}
+
+function pickItem(it){
+  if(!it||it.landed) return;
+  heldItem=it; playMode='manual'; playing=false; autoOrbit=false;
+  document.getElementById('orbitToggle').classList.remove('active');
+  it.mesh.visible=true; it.mesh.scale.setScalar(.86);
+  setTargetMarker(it);
+  setGameCopy(it.mesh.userData.info?.cat||'Piece selected',`Move to target: ${it.mesh.userData.info?.name||'snap piece'}. Space or Drop snaps it into place.`);
+  updateStats();
+}
+
+function pickNextPiece(){ pickItem(nextLooseItem()); }
+
+function dropHeldPiece(){
+  if(!heldItem) { pickNextPiece(); return; }
+  const dist=Math.hypot(heldItem.mesh.position.x-heldItem.tx,heldItem.mesh.position.z-heldItem.tz);
+  const yDist=Math.abs(heldItem.mesh.position.y-heldItem.ty);
+  const good=dist<2.2&&yDist<3.8;
+  if(good){
+    heldItem.mesh.position.set(heldItem.tx,heldItem.ty,heldItem.tz);
+    heldItem.mesh.rotation.set(0,heldItem.mesh.userData.landRy||0,0);
+    heldItem.mesh.scale.setScalar(1);
+    heldItem.landed=true;
+    score+=100+Math.min(150,Math.round(streak*25+Math.max(0,2.2-dist)*35));
+    streak++;
+    snapFlash(new THREE.Vector3(heldItem.tx,heldItem.ty,heldItem.tz),CITIES[currentCity].s1);
+    setGameCopy('Clean snap',`${heldItem.mesh.userData.info?.name||'Piece'} locked into place. Keep the streak going.`);
+    heldItem=null; setTargetMarker(null);
+    const prog=ITEMS.filter(i=>i.landed).length/(ITEMS.length||1);
+    document.getElementById('pf').style.width=(prog*100).toFixed(1)+'%';
+    if(prog>=1) setGameCopy('Assembly complete',`Final score ${score}. Switch styles to try another kit.`);
+  }else{
+    score=Math.max(0,score-20); streak=0;
+    setGameCopy('Not aligned yet','Get closer to the glowing target before dropping. Small misses cost points.');
+  }
+  updateStats();
+}
+
+function activeCrewItem(){
+  if(!playing) return null;
+  return ITEMS.find(it=>elapsed>=it.delay&&!it.landed)||null;
+}
+
+function updateSnapFocus(active){
+  if(active){
+    setTargetMarker(active);
+    document.getElementById('crewChip').textContent='resonating '+(active.mesh.userData.info?.cat||'block').toLowerCase();
+  }
+}
+
+function updateResonance(active,ts){
+  resonanceGroup.visible=!!(active&&active.mesh.visible&&!active.landed);
+  if(!resonanceGroup.visible) return;
+  resonanceGroup.position.copy(active.mesh.position);
+  resonanceGroup.position.y+=.45;
+  resonanceGroup.children.forEach((o,i)=>{
+    const phase=(o.userData.phase||0)+ts*.003;
+    if(o.geometry&&o.geometry.type==='TorusGeometry'){
+      const s=1+Math.sin(phase)*.12+i*.04;
+      o.scale.set(s,s,s);
+      o.rotation.z+=.018+i*.004;
+      o.material.opacity=.18+Math.max(0,Math.sin(phase))*.22;
+    }else{
+      o.position.y=Math.sin(phase)*.18;
+      o.rotation.y=phase*.35;
+      o.material.opacity=.12+Math.max(0,Math.cos(phase))*.2;
+    }
+  });
+}
+
+function styleShapeProfile(C){
+  const a=C.arch||'vienna';
+  // ── If AdriCad bridge data is present, derive from real project ──
+  if(_bridgeData&&_bridgeData.building) return deriveAdriCadProfile(a);
+  // ── Generic hardcoded profiles ────────────────────────────────
+  const profiles={
+    brooklyn:{label:'Brownstone multiplex row',w:18,d:12,parts:[
+      {name:'Left brownstone townhouse',x:-6.2,z:0,w:3.8,d:10,h:13.2,floors:4,kind:'row',delay:.55},
+      {name:'Center brownstone townhouse',x:-2.1,z:-.25,w:3.8,d:10.8,h:14.6,floors:4,kind:'row',delay:.75},
+      {name:'Garden duplex bay',x:2.4,z:.65,w:4.9,d:8.8,h:9.2,floors:3,kind:'bay',delay:.95},
+      {name:'Rear carriage-house wing',x:5.8,z:-3.4,w:4.2,d:5.2,h:6.8,floors:2,kind:'rear',delay:1.2}
+    ],extras:'stoops'},
+    london:{label:'Georgian terrace multiplex',w:22,d:11,parts:[
+      {name:'Five-bay Georgian terrace',x:0,z:0,w:20,d:8.8,h:13.8,floors:4,kind:'terrace',delay:.55},
+      {name:'Lower mews return',x:7.5,z:-4.2,w:6.8,d:5.2,h:6.8,floors:2,kind:'mews',delay:1.1}
+    ],extras:'porticos'},
+    paris:{label:'Haussmann corner block',w:25,d:15,parts:[
+      {name:'Boulevard slab',x:-1.5,z:0,w:20,d:9,h:19.8,floors:6,kind:'paris',delay:.55},
+      {name:'Rounded corner pavilion',x:9.7,z:.8,w:5.4,d:7.4,h:21.4,floors:6,kind:'pavilion',delay:.85},
+      {name:'Courtyard return wing',x:3.8,z:-5.2,w:10.5,d:5.2,h:15.6,floors:5,kind:'wing',delay:1.1}
+    ],extras:'mansard'},
+    florence:{label:'Palazzo compound',w:21,d:16,parts:[
+      {name:'Heavy palazzo block',x:-2,z:0,w:14,d:11,h:12.2,floors:3,kind:'palazzo',delay:.55},
+      {name:'Courtyard side wing',x:6,z:-3.8,w:5.8,d:7.2,h:8.5,floors:2,kind:'wing',delay:1.05},
+      {name:'Campanile stair tower',x:7.4,z:2.3,w:3.1,d:3.1,h:18.5,floors:5,kind:'tower',delay:1.35}
+    ],extras:'arcade'},
+    edinburgh:{label:'Baronial split-level mass',w:20,d:13,parts:[
+      {name:'Tall old-town tenement',x:-3,z:0,w:10,d:9.2,h:17.2,floors:5,kind:'tenement',delay:.55},
+      {name:'Offset stair tower',x:5.2,z:1.2,w:4,d:4,h:22.5,floors:6,kind:'tower',delay:.95},
+      {name:'Low close wing',x:3.2,z:-4.1,w:7.8,d:4.8,h:8.6,floors:3,kind:'close',delay:1.2}
+    ],extras:'crowstep'},
+    jerusalem:{label:'Stepped hillside multiplex',w:22,d:16,parts:[
+      {name:'Lower garden flat',x:-5.2,z:2.2,w:8.5,d:9,h:5.8,floors:2,kind:'terrace',delay:.55},
+      {name:'Middle family maisonette',x:0,z:0,w:10.5,d:9.5,h:9.6,floors:3,kind:'terrace',delay:.85},
+      {name:'Upper roof apartment',x:4.8,z:-2.2,w:8.8,d:8,h:13.5,floors:4,kind:'terrace',delay:1.15}
+    ],extras:'terraces'},
+    vienna:{label:'Ringstrasse courtyard mansion',w:24,d:15,parts:[
+      {name:'Central palace body',x:0,z:0,w:15,d:9.5,h:17.8,floors:5,kind:'vienna',delay:.55},
+      {name:'Left courtyard wing',x:-7.8,z:-3.3,w:5.8,d:7.4,h:13.8,floors:4,kind:'wing',delay:.95},
+      {name:'Right courtyard wing',x:7.8,z:-3.3,w:5.8,d:7.4,h:13.8,floors:4,kind:'wing',delay:1.15},
+      {name:'Central projecting pavilion',x:0,z:1.25,w:5.5,d:2.8,h:19.4,floors:5,kind:'pavilion',delay:1.35}
+    ],extras:'pavilion'}
+  };
+  return profiles[a]||profiles.vienna;
+}
+
+// ─── ADRICAD-DERIVED PROFILE ──────────────────────────────────────
+// Called instead of the hardcoded profiles when bridge data is present.
+// Parts scale proportionally from real AdriCad building dimensions.
+function deriveAdriCadProfile(arch){
+  const{uwM,udM,fhM,fl,units,totalW,totalH}=_bridgeDims();
+  const cfl=r=>Math.max(1,Math.round(fl*r));  // clamped floor count
+  const proj=_bridgeData&&_bridgeData.project||{};
+  const projName=_bridgeData&&_bridgeData._suiteProjName||proj.name||'';
+  const lbl=str=>`${projName?projName+' · ':''}AdriCad · ${str}`;
+
+  switch(arch){
+
+    case 'brooklyn':{
+      const nU=Math.min(units,5);
+      const parts=[];
+      for(let u=0;u<nU;u++){
+        parts.push({
+          name:`Brownstone unit ${u+1}`,
+          x:(u-(nU-1)/2)*uwM,
+          z:(u%2)*.18,
+          w:uwM*.93,
+          d:udM,
+          h:totalH+(u%3)*fhM*.1,
+          floors:fl,
+          kind:'row',
+          delay:.55+u*.2
+        });
+      }
+      parts.push({
+        name:'Rear carriage-house',
+        x:totalW*.16,
+        z:-(udM*.52),
+        w:Math.max(3,totalW*.36),
+        d:udM*.44,
+        h:Math.max(fhM*1.5,totalH*.52),
+        floors:cfl(.52),
+        kind:'rear',
+        delay:1.2
+      });
+      return{label:lbl(`Brooklyn · ${nU} units`),w:totalW*1.18,d:udM*1.55,parts,extras:'stoops'};
+    }
+
+    case 'london':{
+      return{
+        label:lbl(`Georgian terrace · ${units} units`),
+        w:totalW*1.18,d:udM*1.52,
+        parts:[
+          {name:'Georgian terrace',x:0,z:0,w:totalW,d:udM,h:totalH,floors:fl,kind:'terrace',delay:.55},
+          {name:'Mews return',x:totalW*.28,z:-(udM*.52),w:Math.max(3.5,totalW*.32),d:udM*.4,h:Math.max(fhM*2,totalH*.5),floors:cfl(.5),kind:'mews',delay:1.1}
+        ],
+        extras:'porticos'
+      };
+    }
+
+    case 'paris':{
+      const pavW=Math.max(4,totalW*.22);
+      return{
+        label:lbl(`Haussmann block · ${units} units`),
+        w:totalW*1.25,d:udM*1.6,
+        parts:[
+          {name:'Boulevard slab',x:-(totalW*.06),z:0,w:totalW*.8,d:udM,h:totalH,floors:fl,kind:'paris',delay:.55},
+          {name:'Corner pavilion',x:totalW*.47,z:udM*.06,w:pavW,d:udM*.78,h:totalH*1.08,floors:fl,kind:'pavilion',delay:.85},
+          {name:'Courtyard return',x:totalW*.15,z:-(udM*.5),w:Math.max(4,totalW*.42),d:udM*.36,h:Math.max(fhM*3,totalH*.78),floors:cfl(.78),kind:'wing',delay:1.1}
+        ],
+        extras:'mansard'
+      };
+    }
+
+    case 'florence':{
+      const tW=Math.min(3.5,Math.max(2,totalW*.15));
+      return{
+        label:lbl(`Palazzo compound · ${units} units`),
+        w:totalW*1.2,d:udM*1.65,
+        parts:[
+          {name:'Palazzo body',x:-(totalW*.08),z:0,w:totalW*.65,d:udM,h:totalH,floors:fl,kind:'palazzo',delay:.55},
+          {name:'Courtyard wing',x:totalW*.36,z:-(udM*.35),w:Math.max(3,totalW*.28),d:udM*.64,h:Math.max(fhM*2,totalH*.7),floors:cfl(.7),kind:'wing',delay:1.05},
+          {name:'Campanile tower',x:totalW*.42,z:udM*.2,w:tW,d:tW,h:totalH*1.52,floors:fl+2,kind:'tower',delay:1.35}
+        ],
+        extras:'arcade'
+      };
+    }
+
+    case 'edinburgh':{
+      const tW=Math.min(4.2,Math.max(2.8,totalW*.2));
+      return{
+        label:lbl(`Baronial · ${units} units`),
+        w:totalW*1.22,d:udM*1.52,
+        parts:[
+          {name:'Tenement block',x:-(totalW*.15),z:0,w:totalW*.5,d:udM,h:totalH,floors:fl,kind:'tenement',delay:.55},
+          {name:'Stair tower',x:totalW*.28,z:udM*.12,w:tW,d:tW,h:totalH*1.3,floors:fl+1,kind:'tower',delay:.95},
+          {name:'Close wing',x:totalW*.18,z:-(udM*.42),w:Math.max(3,totalW*.38),d:udM*.46,h:Math.max(fhM*2,totalH*.5),floors:cfl(.5),kind:'close',delay:1.2}
+        ],
+        extras:'crowstep'
+      };
+    }
+
+    case 'jerusalem':{
+      const nS=Math.max(2,Math.min(4,units));
+      const parts=Array.from({length:nS},(_,i)=>({
+        name:`Terrace level ${i+1}`,
+        x:(i-(nS-1)/2)*(totalW/nS),
+        z:i*udM*.2,
+        w:(totalW/nS)*.92,
+        d:udM,
+        h:Math.max(fhM*2,totalH*(i+1)/nS),
+        floors:Math.max(1,Math.round(fl*(i+1)/nS)),
+        kind:'terrace',
+        delay:.55+i*.3
+      }));
+      return{label:lbl(`Jerusalem stepped · ${units} units`),w:totalW*1.18,d:udM*1.6,parts,extras:'terraces'};
+    }
+
+    default:
+    case 'vienna':{
+      const wingW=Math.max(4,totalW*.28);
+      const mainW=Math.max(5,totalW*.62);
+      return{
+        label:lbl(`Ringstrasse · ${units} units`),
+        w:totalW*1.28,d:udM*1.58,
+        parts:[
+          {name:'Main palace body',x:0,z:0,w:mainW,d:udM,h:totalH,floors:fl,kind:'vienna',delay:.55},
+          {name:'Left courtyard wing',x:-(mainW/2+wingW/2),z:-(udM*.34),w:wingW,d:udM*.74,h:Math.max(fhM*3,totalH*.78),floors:cfl(.78),kind:'wing',delay:.95},
+          {name:'Right courtyard wing',x:mainW/2+wingW/2,z:-(udM*.34),w:wingW,d:udM*.74,h:Math.max(fhM*3,totalH*.78),floors:cfl(.78),kind:'wing',delay:1.15},
+          {name:'Central pavilion',x:0,z:udM*.12,w:Math.min(6,totalW*.26),d:udM*.3,h:totalH*1.1,floors:fl,kind:'pavilion',delay:1.35}
+        ],
+        extras:'pavilion'
+      };
+    }
+  }
+}
+
+function addWindowPattern(grp,w,h,d,floors,kind,C){
+  const glass=MT(C.glass,.45), trim=M(blendC(C.s1,C.s3,.2),18), white=M(0xf1eadc,22);
+  const cols=kind==='terrace'?Math.max(3,Math.round(w/2.2)):kind==='tower'?1:Math.max(2,Math.round(w/3.2));
+  for(let f=0;f<floors;f++){
+    const y=(f+.55)*(h/floors);
+    for(let c=0;c<cols;c++){
+      const x=-w/2+(c+.5)*w/cols;
+      if(kind==='tower'&&f%2&&c===0) continue;
+      const ww=kind==='palazzo'?1.05:kind==='paris'?1.0:(kind==='row' ? .78 : .86);
+      const wh=kind==='paris'&&f===1?1.75:kind==='palazzo'?1.25:1.35;
+      grp.add(BOX(ww,wh,.06,glass,x,y,d/2+.055));
+      grp.add(BOX(ww+.18,.08,.09,kind==='terrace'?white:trim,x,y-wh/2-.08,d/2+.09));
+      grp.add(BOX(.08,wh+.14,.09,kind==='terrace'?white:trim,x-ww/2-.08,y,d/2+.09));
+      grp.add(BOX(.08,wh+.14,.09,kind==='terrace'?white:trim,x+ww/2+.08,y,d/2+.09));
+      if(kind==='paris'&&f===1) addRail(grp,ww+1.0,y-wh/2-.18,d/2+.38,C);
+      if(kind==='palazzo'&&f===0) grp.add(TRI(ww+1.0,.42,.12,trim,x,y+wh/2+.08,d/2+.12));
+    }
+  }
+}
+
+function makeShapeMass(part,C){
+  const grp=new THREE.Group();
+  const base=M(blendC(C.s1,C.s2,.2),12), side=M(blendC(C.s2,C.s3,.2),9), cap=M(blendC(C.s1,0xffffff,.06),18);
+  grp.add(BOX(part.w,part.h,part.d,base,0,part.h/2,0));
+  grp.add(BOX(part.w+.08,.18,part.d+.08,side,0,.09,0));
+  addWindowPattern(grp,part.w,part.h,part.d,part.floors,part.kind,C);
+  for(let f=1;f<part.floors;f++) grp.add(BOX(part.w+.12,.08,.14,cap,0,f*part.h/part.floors,part.d/2+.08));
+  if(['paris','vienna','pavilion'].includes(part.kind)) grp.add(BOX(part.w+.26,.34,.44,cap,0,part.h+.16,part.d/2+.1));
+  if(part.kind==='tower') grp.add(TRI(part.w+.7,1.3,part.d+.4,side,0,part.h+.05,.2));
+  if(part.kind==='terrace') grp.add(BOX(part.w*.86,.55,.22,cap,0,part.h+.28,part.d/2+.12));
+  if(part.kind==='palazzo') for(let i=0;i<Math.max(3,Math.floor(part.w/2));i++) grp.add(BOX(.28,.35,.22,side,-part.w/2+.8+i*1.8,.2,part.d/2+.18));
+  grp.userData.info={cat:'MASSING',name:part.name,dims:`${part.w.toFixed(1)}×${part.h.toFixed(1)}×${part.d.toFixed(1)} m`,mat:C.mat,wt:`${(part.w*part.h*part.d*.22).toFixed(0)} t`,chases:[]};
+  return grp;
+}
+
+function bayCountFor(part){
+  if(part.kind==='tower') return 1;
+  if(part.kind==='row'||part.kind==='bay'||part.kind==='rear'||part.kind==='mews') return Math.max(1,Math.round(part.w/2.2));
+  if(part.kind==='palazzo') return Math.max(3,Math.round(part.w/3.2));
+  if(part.kind==='paris'||part.kind==='terrace'||part.kind==='vienna') return Math.max(4,Math.round(part.w/3));
+  return Math.max(2,Math.round(part.w/3));
+}
+
+function makeBaySection(part,C,f,c,cols){
+  const floorH=part.h/part.floors;
+  const bayW=part.w/cols;
+  const grp=new THREE.Group();
+  const trim=M(blendC(C.s1,C.s3,.22),18);
+  const white=M(0xf0eadc,22);
+  const moduleDepth=part.d*(part.kind==='wing'||part.kind==='rear'||part.kind==='mews'?0.88:0.96);
+  addCoursedLimestone(grp,bayW*1.02,floorH*.9,moduleDepth,C,{courseH:.34,blockW:part.kind==='palazzo'?1.05:.68});
+  grp.add(BOX(bayW*1.04,.08,moduleDepth+.08,trim,0,.04,0));
+  const frontZ=moduleDepth/2+.04;
+  const ww=Math.min(bayW*.46,(part.kind==='tower' ? .62 : 1.05));
+  const wh=Math.min(floorH*.48,part.kind==='paris'&&f===1?1.65:1.32);
+  const isDoor=f===0&&(c===Math.floor(cols/2)||part.kind==='row'&&c===0);
+  if(isDoor){
+    addOpeningStones(grp,0,floorH*.42,frontZ+.11,Math.min(bayW*.55,1.25),Math.min(floorH*.72,2.15),C,'door');
+  }else if(part.kind==='palazzo'&&f===0){
+    grp.add(TRI(bayW*.68,floorH*.42,.16,trim,0,floorH*.23,frontZ));
+    grp.add(BOX(bayW*.16,floorH*.64,.16,trim,-bayW*.28,floorH*.34,frontZ));
+    grp.add(BOX(bayW*.16,floorH*.64,.16,trim,bayW*.28,floorH*.34,frontZ));
+  }else{
+    addOpeningStones(grp,0,floorH*.54,frontZ+.09,ww,wh,C,'window');
+    if(part.kind==='terrace'||part.kind==='mews'){
+      grp.add(BOX(ww+.28,.08,.12,white,0,floorH*.54+wh/2+.12,frontZ+.14));
+    }
+    if(part.kind==='paris'&&f===1) addRail(grp,Math.min(bayW*.86,1.7),floorH*.54-wh/2-.2,frontZ+.28,C);
+    if(part.kind==='row'&&f===0&&c===0) grp.add(BOX(bayW*.86,floorH*.22,.22,trim,0,floorH*.14,frontZ+.08));
+  }
+  addInteriorAndMEP(grp,bayW*1.0,floorH*.88,moduleDepth,C,f,c,part);
+  if(f===0&&['row','terrace','paris','vienna'].includes(part.kind)){
+    for(let r=1;r<4;r++) grp.add(BOX(bayW*.94,.018,.035,trim,0,r*floorH*.17,frontZ+.08));
+  }
+  grp.userData.info={
+    cat:'LIMESTONE BAY',
+    name:`${part.name} · floor ${f+1} bay ${c+1}`,
+    dims:`${bayW.toFixed(1)}×${floorH.toFixed(1)}×${moduleDepth.toFixed(1)} m`,
+    mat:C.mat,
+    wt:`${(bayW*floorH*moduleDepth*.18).toFixed(1)} t`,
+    chases:f<part.floors-1&&c%2===0?['Water','Drain','Electrical']:[]
+  };
+  return grp;
+}
+
+function makePartWallPanel(type,w,h,C,part,f,c){
+  const grp=new THREE.Group();
+  const stone=M(blendC(C.s1,C.s2,(f+c)*.04+.08),10);
+  const trim=M(blendC(C.s1,C.s3,.18),20);
+  const glass=MT(C.glass,.42);
+  const body=BOX(w,h,WT,stone,0,0,0);
+  grp.add(body);
+  addMortar(grp,w,h,WT,C.mortar,.34);
+
+  if(type==='window'||type==='door'){
+    const isDoor=type==='door';
+    const ow=Math.min(w*(isDoor ? .48 : .38),isDoor ? 1.25 : 1.05);
+    const oh=Math.min(h*(isDoor ? .62 : .42),isDoor ? 2.15 : (part.kind==='paris'&&f===1 ? 1.55 : 1.25));
+    const oy=isDoor ? -h/2+oh/2+.08 : -h*.03;
+    const dark=M(0x0b0a08,4);
+    grp.add(BOX(ow,oh,.075,isDoor?dark:glass,0,oy,WT/2+.045));
+    grp.add(BOX(.12,oh+.22,.13,trim,-ow/2-.11,oy,WT/2+.09));
+    grp.add(BOX(.12,oh+.22,.13,trim, ow/2+.11,oy,WT/2+.09));
+    grp.add(BOX(ow+.34,.16,.16,trim,0,oy+oh/2+.12,WT/2+.1));
+    if(!isDoor) grp.add(BOX(ow+.28,.11,.15,trim,0,oy-oh/2-.09,WT/2+.1));
+    if(isDoor) grp.add(TRI(ow+.48,.35,.15,trim,0,oy+oh/2+.2,WT/2+.12));
+    if(part.kind==='paris'&&f===1&&!isDoor) addRail(grp,Math.min(w*.82,1.6),oy-oh/2-.22,WT/2+.32,C);
+  }
+
+  grp.userData.info={
+    cat:type==='door'?'ENTRY PORTAL':type==='solid'?'BACK WALL':'FACADE SECTION',
+    name:`${part.name} ${type==='door'?'entry':'wall'} panel`,
+    dims:`${w.toFixed(1)}×${h.toFixed(1)}×${WT} m`,
+    mat:C.mat,
+    wt:`${(w*h*WT*2.2).toFixed(1)} t`,
+    chases:type==='window'&&f<part.floors-1?['pipe','duct']:[]
+  };
+  return grp;
+}
+
+function makePartMEPLayer(part,f,C){
+  const floorH=part.h/part.floors;
+  const grp=new THREE.Group();
+  const pipe=M(0x3a6898,60), duct=M(0xb85820,40), elec=M(0x70a020,50), waste=M(0x708080,40);
+  const runs=Math.max(2,Math.round(part.w/4));
+  for(let i=0;i<runs;i++){
+    const x=-part.w/2+(i+.5)*part.w/runs;
+    grp.add(CYL(.055,floorH*.78,pipe,10).translateX(x-part.w/runs*.18));
+    grp.add(CYL(.05,floorH*.64,waste,10).translateX(x+part.w/runs*.2).translateZ(-part.d*.16));
+    grp.add(BOX(part.w/runs*.62,.05,.05,elec,x,floorH*.3,-part.d*.28));
+  }
+  grp.add(BOX(part.w*.82,.18,.24,duct,0,floorH*.33,part.d*.16));
+  grp.userData.info={
+    cat:'MEP LAYER',
+    name:`${part.name} mechanical rough-in floor ${f+1}`,
+    dims:`${part.w.toFixed(1)}×${floorH.toFixed(1)}×${part.d.toFixed(1)} m zone`,
+    mat:'Steel pipe / galv. duct / conduit',
+    wt:`${(part.w*.16).toFixed(1)} t`,
+    chases:['pipe','duct','elec']
+  };
+  return grp;
+}
+
+function addPartFloorPlanks(part,C,f,delay){
+  const floorH=part.h/part.floors;
+  const y=(f+1)*floorH-PLANK_T/2;
+  const bays=Math.max(1,Math.round(part.w/3.2));
+  const plankCount=Math.max(4,Math.floor((part.d-WT*2)/.72));
+  const bayW=part.w/bays;
+  for(let b=0;b<bays;b++){
+    const x0=part.x-part.w/2+b*bayW;
+    for(let p=0;p<plankCount;p++){
+      const grp=new THREE.Group();
+      const vary=((b+p+f)%7)/7;
+      const mat=M(blendC(C.plank,C.plankD,vary*.55),vary>.45?15:8);
+      const plank=BOX(bayW-.04,PLANK_T,(part.d-WT*2)/plankCount-.025,mat);
+      grp.add(plank);
+      const joint=M(blendC(C.mortar,0x000000,.25),3);
+      grp.add(BOX(bayW-.04,.012,.012,joint,0,PLANK_T/2+.004,plank.geometry.parameters.depth/2-.012));
+      grp.userData.info={
+        cat:'FLOOR PLANK',
+        name:`${part.name} stone plank`,
+        dims:`${bayW.toFixed(1)}×${PLANK_T}×${((part.d-WT*2)/plankCount).toFixed(1)} m`,
+        mat:C.mat,
+        wt:`${(bayW*PLANK_T*((part.d-WT*2)/plankCount)*2.5).toFixed(2)} t`,
+        chases:[]
+      };
+      const tx=x0+bayW/2;
+      const tz=part.z-part.d/2+WT+(p+.5)*(part.d-WT*2)/plankCount;
+      addItem(grp,tx,y,tz,tx+(Math.random()-.5)*1.5,y+18+p*.8+Math.random()*3,tz,delay+p*.035+b*.12,grp.userData.info,'structure');
+    }
+  }
+}
+
+function addPartRoofAssembly(part,C,delay){
+  const roofY=part.h+.9;
+  const bays=Math.max(1,Math.round(part.w/3.2));
+  const bayW=part.w/bays;
+  const slabM=M(blendC(C.s2,C.s3,.55),6);
+  for(let b=0;b<bays;b++){
+    const slab=BOX(bayW-.04,.24,part.d-.06,slabM);
+    for(let i=1;i<4;i++) slab.add(BOX(bayW-.04,.014,.012,M(C.mortar,2),0,.124,-part.d/2+i*(part.d/4)));
+    slab.userData.info={cat:'ROOF SLAB',name:`${part.name} roof stone slab`,dims:`${bayW.toFixed(1)}×0.24×${(part.d-.06).toFixed(1)} m`,mat:C.mat,wt:`${(bayW*.24*(part.d-.06)*2.5).toFixed(1)} t`,chases:[]};
+    const tx=part.x-part.w/2+bayW*(b+.5);
+    const from=spawnFrom(tx,roofY,part.z,'above');
+    addItem(slab,tx,roofY,part.z,from.x,from.y+8+b*1.8,from.z,delay+b*.14,slab.userData.info,'envelope');
+  }
+  const capM=M(blendC(C.s1,C.s3,.18),24);
+  [
+    {mesh:BOX(part.w+.7,.12,.34,capM),x:part.x,y:roofY+.82,z:part.z+part.d/2+.18,cat:'PARAPET CAP',name:'front coping'},
+    {mesh:BOX(part.w+.7,.12,.34,capM),x:part.x,y:roofY+.82,z:part.z-part.d/2-.18,cat:'PARAPET CAP',name:'rear coping'},
+    {mesh:BOX(.34,.12,part.d+.7,capM),x:part.x-part.w/2-.18,y:roofY+.82,z:part.z,cat:'PARAPET CAP',name:'left coping'},
+    {mesh:BOX(.34,.12,part.d+.7,capM),x:part.x+part.w/2+.18,y:roofY+.82,z:part.z,cat:'PARAPET CAP',name:'right coping'}
+  ].forEach((c,i)=>{
+    c.mesh.userData.info={cat:c.cat,name:`${part.name} ${c.name}`,dims:'stone coping run',mat:C.mat,wt:'0.8 t',chases:[]};
+    const from=spawnFrom(c.x,c.y,c.z,i<2?'above':(i===2?'left':'right'));
+    addItem(c.mesh,c.x,c.y,c.z,from.x,from.y+6,from.z,delay+.55+i*.08,c.mesh.userData.info,'envelope');
+  });
+  if(part.w>4){
+    const chim=new THREE.Group();
+    chim.add(BOX(.5,1.25,.5,M(blendC(C.s2,C.s3,.3),10)));
+    chim.add(BOX(.62,.1,.62,capM,0,.68,0));
+    chim.add(BOX(.34,.48,.34,M(blendC(C.s3,0x303028,.35),8),0,.94,0));
+    chim.userData.info={cat:'CHIMNEY STACK',name:`${part.name} service stack`,dims:'0.5×1.7×0.5 m',mat:C.mat,wt:'0.7 t',chases:['duct']};
+    const cx=part.x+part.w*.24, cz=part.z-part.d*.16;
+    const from2=spawnFrom(cx,roofY+1.25,cz,'above');
+    addItem(chim,cx,roofY+1.25,cz,from2.x,from2.y+10,from2.z,delay+.95,chim.userData.info,'envelope');
+  }
+}
+
+function addSegmentedMass(part,C,partIndex){
+  const cols=bayCountFor(part);
+  const floorH=part.h/part.floors;
+  const bayW=part.w/cols;
+  const baseDelay=part.delay+partIndex*.18;
+  const plinth=BOX(part.w+.55,.44,part.d+.55,M(blendC(C.s2,C.s3,.5),8));
+  plinth.userData.info={cat:'FOUNDATION PLINTH',name:`${part.name} foundation`,dims:`${(part.w+.55).toFixed(1)}×0.44×${(part.d+.55).toFixed(1)} m`,mat:C.mat,wt:`${((part.w+.55)*.44*(part.d+.55)*2.5).toFixed(0)} t`,chases:[]};
+  addItem(plinth,part.x,-.22,part.z,part.x,-8,part.z,baseDelay,plinth.userData.info,'foundation');
+  for(let f=0;f<part.floors;f++){
+    const fy=f*floorH;
+    const sd=baseDelay+.5+f*2.5;
+    for(let c=0;c<cols;c++){
+      const tx=part.x-part.w/2+bayW*(c+.5);
+      const isDoor=f===0&&(c===Math.floor(cols/2)||part.kind==='row'&&c===0);
+      const front=makePartWallPanel(isDoor?'door':'window',bayW,floorH,C,part,f,c);
+      let from=spawnFrom(tx,fy+floorH/2,part.z+part.d/2,'front');
+      addItem(front,tx,fy+floorH/2,part.z+part.d/2,from.x,from.y,from.z,sd+c*.12,front.userData.info,'structure');
+      const back=makePartWallPanel('solid',bayW,floorH,C,part,f,c);
+      back.userData.info.cat='BACK WALL';
+      from=spawnFrom(tx,fy+floorH/2,part.z-part.d/2,'back');
+      addItem(back,tx,fy+floorH/2,part.z-part.d/2,from.x,from.y,from.z,sd+.1+c*.1,back.userData.info,'structure');
+    }
+    const left=makePartWallPanel('solid',part.d,floorH,C,part,f,0);
+    left.rotation.y=Math.PI/2;left.userData.landRy=Math.PI/2;left.userData.info.cat='SIDE WALL';
+    let from=spawnFrom(part.x-part.w/2,fy+floorH/2,part.z,'left');
+    addItem(left,part.x-part.w/2,fy+floorH/2,part.z,from.x,from.y,from.z,sd+.22,left.userData.info,'structure');
+    const right=makePartWallPanel('solid',part.d,floorH,C,part,f,cols);
+    right.rotation.y=Math.PI/2;right.userData.landRy=Math.PI/2;right.userData.info.cat='SIDE WALL';
+    from=spawnFrom(part.x+part.w/2,fy+floorH/2,part.z,'right');
+    addItem(right,part.x+part.w/2,fy+floorH/2,part.z,from.x,from.y,from.z,sd+.3,right.userData.info,'structure');
+    for(let c=1;c<cols;c++){
+      if(cols<2) continue;
+      const wx=part.x-part.w/2+bayW*c;
+      const iw=BOX(WT,floorH,part.d-WT*2,M(blendC(C.s2,C.s3,.3),8));
+      iw.userData.info={cat:'CROSS WALL',name:`${part.name} interior load wall`,dims:`${WT}×${floorH.toFixed(1)}×${(part.d-WT*2).toFixed(1)} m`,mat:C.mat,wt:`${(WT*floorH*(part.d-WT*2)*2.2).toFixed(1)} t`,chases:[]};
+      from=spawnFrom(wx,fy+floorH/2,part.z,'above');
+      addItem(iw,wx,fy+floorH/2,part.z,from.x,from.y,from.z,sd+.38+c*.08,iw.userData.info,'structure');
+    }
+    if(f<part.floors-1){
+      const mep=makePartMEPLayer(part,f,C);
+      from=spawnFrom(part.x,fy+floorH*.5,part.z-part.d/2,'back');
+      addItem(mep,part.x,fy+floorH*.5,part.z,from.x,fy+floorH*.5+18,from.z,sd+1.0,mep.userData.info,'mep_rough');
+      addPartFloorPlanks(part,C,f,sd+1.55);
+    }
+    if(f>0){
+      const belt=new THREE.Group();
+      const mat=M(blendC(C.s1,C.s3,.18),18);
+      belt.add(BOX(part.w+.12,.08,.24,mat,0,0,part.d/2+.1));
+      belt.userData.info={cat:'BELT COURSE',name:`${part.name} floor ${f+1} datum course`,dims:`${part.w.toFixed(1)} m run`,mat:C.mat,wt:'0.8 t',chases:[]};
+      from=spawnFrom(part.x,f*floorH,part.z,'right');
+      addItem(belt,part.x,f*floorH,part.z,from.x,from.y,from.z,sd+.55,belt.userData.info,'structure');
+    }
+  }
+  addPartRoofAssembly(part,C,baseDelay+.5+part.floors*2.5);
+}
+
+function openingBounds(part,f,c,cols,floorH,bayW){
+  const isDoor=f===0&&(c===Math.floor(cols/2)||part.kind==='row'&&c===0);
+  const w=Math.min(bayW*(isDoor ? .55 : .46),isDoor ? 1.25 : 1.05)+.34;
+  const h=Math.min(floorH*(isDoor ? .72 : .48),isDoor ? 2.15 : (part.kind==='paris'&&f===1 ? 1.65 : 1.32))+.34;
+  const y=isDoor?floorH*.42:floorH*.54;
+  return{x:0,y,w,h};
+}
+
+function addIndividualStoneBlocks(part,C,f,c,cols,baseDelay){
+  const floorH=part.h/part.floors;
+  const bayW=part.w/cols;
+  const moduleDepth=part.d*(part.kind==='wing'||part.kind==='rear'||part.kind==='mews'?0.88:0.96);
+  const tx0=part.x-part.w/2+bayW*c;
+  const ty0=f*floorH;
+  const tz=part.z+moduleDepth/2+.26;
+  const rows=Math.max(3,Math.floor(floorH/.72));
+  const blockW=part.kind==='palazzo'?1.0:.64;
+  const colsStone=Math.ceil((bayW*1.04)/blockW);
+  const open=openingBounds(part,f,c,cols,floorH,bayW);
+  let n=0;
+  for(let r=0;r<rows;r++){
+    const rowH=floorH*.82/rows;
+    const ly=floorH*.08+(r+.5)*rowH;
+    const offset=r%2?blockW*.5:0;
+    for(let s=0;s<colsStone;s++){
+      const lx=-bayW*.52+(s+.5)*blockW+offset;
+      if(lx>bayW*.54) continue;
+      const inOpening=Math.abs(lx-open.x)<open.w/2 && Math.abs(ly-open.y)<open.h/2;
+      if(inOpening) continue;
+      const bw=Math.min(blockW*.9,bayW*.94);
+      const color=blendC(C.s1,C.s2,((r+s+f+c)%7)*.045+.04);
+      const stone=BOX(bw,rowH*.72,.24,M(color,8));
+      stone.userData.info={
+        cat:'LIMESTONE BLOCK',
+        name:`Course stone · floor ${f+1} bay ${c+1}`,
+        dims:`${bw.toFixed(2)}×${(rowH*.72).toFixed(2)}×0.24 m`,
+        mat:C.mat,
+        wt:`${(bw*rowH*.72*.24*2.4).toFixed(2)} t`,
+        chases:[]
+      };
+      const tx=tx0+bayW/2+lx, ty=ty0+ly;
+      const from=spawnFrom(tx,ty,tz,(r+s)%2?'front':'above');
+      addItem(stone,tx,ty,tz,from.x,from.y+2,from.z,baseDelay+n*.018,stone.userData.info);
+      n++;
+    }
+  }
+}
+
+function addVisibleMepRuns(part,C,f,c,cols,baseDelay){
+  if(f>=part.floors-1 || c%2) return;
+  const floorH=part.h/part.floors;
+  const bayW=part.w/cols;
+  const moduleDepth=part.d*(part.kind==='wing'||part.kind==='rear'||part.kind==='mews'?0.88:0.96);
+  const x=part.x-part.w/2+bayW*(c+.5);
+  const y=f*floorH;
+  const z=part.z-moduleDepth*.28;
+  const defs=[
+    {cat:'WATER RISER',name:'Blue supply riser',mesh:CYL(.045,floorH*.72,M(0x3a6898,60),10),dx:-bayW*.28,dz:0,delay:0},
+    {cat:'DRAIN STACK',name:'Grey waste stack',mesh:CYL(.055,floorH*.66,M(0x607070,30),10),dx:bayW*.28,dz:-.12,delay:.035},
+    {cat:'ELECTRICAL RUN',name:'Green conduit run',mesh:BOX(bayW*.66,.04,.04,M(0x70a020,45)),dx:0,dz:-.35,delay:.07},
+    {cat:'DUCT RUN',name:'Low-profile orange duct',mesh:BOX(bayW*.5,.14,.24,M(0xb85820,35)),dx:0,dz:.15,delay:.105}
+  ];
+  defs.forEach(d=>{
+    d.mesh.userData.info={cat:d.cat,name:d.name,dims:'visible embedded MEP run',mat:'MEP rough-in',wt:'0.1 t',chases:[d.cat]};
+    const tx=x+d.dx, ty=y+floorH*.44, tz=z+d.dz;
+    const from=spawnFrom(tx,ty,tz,'back');
+    addItem(d.mesh,tx,ty,tz,from.x,from.y+1.5,from.z,baseDelay+d.delay,d.mesh.userData.info,'mep_rough');
+  });
+}
+
+function buildRadicalScene(C){
+  const profile=styleShapeProfile(C);
+  const fnd=BOX(profile.w+2,.65,profile.d+2,M(blendC(C.s2,C.s3,.42),8));
+  fnd.userData.info={cat:'SITE PLINTH',name:profile.label,dims:`${profile.w}×0.65×${profile.d} m`,mat:C.mat,wt:'site assembly',chases:[]};
+  addItem(fnd,0,-.32,0,0,-10,0,.05,fnd.userData.info,'excavation');
+  profile.parts.forEach((part,i)=>addSegmentedMass(part,C,i));
+  addRadicalExtras(profile,C);
+}
+
+function addRadicalExtras(profile,C){
+  const kind=profile.extras, mat=M(blendC(C.s1,C.s3,.18),18), dark=M(blendC(C.s3,0x111111,.35),8);
+  function add(grp,x,y,z,delay,cat,name){grp.userData.info={cat,name,dims:'style silhouette module',mat:C.mat,wt:'1.5 t',chases:[]};const from=spawnFrom(x,y,z,'above');addItem(grp,x,y,z,from.x,from.y+4,from.z,delay,grp.userData.info,'envelope');}
+
+  // Derive reference dimensions from the primary part
+  const p0=profile.parts[0]||{x:0,z:0,w:15,d:8,h:12,floors:3};
+  const pw=p0.w, pd=p0.d, px0=p0.x, pz0=p0.z, ph=p0.h, pfl=p0.floors;
+  const fhEst=ph/Math.max(1,pfl);  // estimated floor height
+
+  if(kind==='stoops'){
+    // One stoop at the front face of each row-kind block
+    const rowParts=profile.parts.filter(p=>p.kind==='row'||p.kind==='terrace'&&p.floors>=2);
+    (rowParts.length?rowParts:[p0]).forEach((p,i)=>{
+      const g=new THREE.Group();
+      for(let s=0;s<6;s++) g.add(BOX(2.1-s*.12,.16,.8+s*.16,mat,0,s*.12,s*.12));
+      add(g,p.x,.05,p.z+p.d/2+.82,2+i*.15,'STOOP','Brownstone entry stoop');
+    });
+  }else if(kind==='porticos'){
+    const nP=Math.max(3,Math.round(pw/4.5));
+    Array.from({length:nP},(_,i)=>{
+      const x=px0-pw/2+(i+.5)*pw/nP;
+      const g=new THREE.Group();
+      g.add(BOX(1.7,.18,.8,mat,0,2.6,0));
+      [-.62,.62].forEach(ppx=>{const c=CYL(.07,2.5,mat,12);c.position.set(ppx,1.3,0);g.add(c);});
+      add(g,x,0,pz0+pd/2+.52,2+i*.08,'PORTICO','Repeated Georgian entry portico');
+    });
+  }else if(kind==='mansard'){
+    const g=new THREE.Group();
+    g.add(TRI(pw+2,2.2,3.2,M(0x34383e,8),0,0,.4));
+    for(let i=0;i<Math.max(2,Math.round(pw/4));i++) g.add(BOX(1,.75,.18,mat,-pw/2+2+i*(pw/Math.max(2,Math.round(pw/4))),.82,2.2));
+    add(g,px0,ph,pz0+pd/2+2.0,8.6,'MANSARD','Continuous slate mansard roof');
+  }else if(kind==='arcade'){
+    const g=new THREE.Group();
+    const nA=Math.max(3,Math.round(pw/2.8));
+    for(let i=0;i<nA;i++){
+      const ax=px0-pw/2+(i+.5)*pw/nA;
+      g.add(BOX(.22,2.2,.22,mat,ax,1.1,0));
+      g.add(TRI((pw/nA)*.82,.8,.26,mat,ax,2.05,.02));
+    }
+    add(g,0,0,pz0+pd/2+.72,2.2,'ARCADE','Open palazzo arcade base');
+  }else if(kind==='crowstep'){
+    const g=new THREE.Group();
+    const nS=Math.max(5,Math.round(pw/1.5));
+    for(let i=0;i<nS;i++) g.add(BOX(.7,.35+i*.08,.5,mat,-pw*.3+i*pw*.6/nS,0+i*.18,0));
+    add(g,px0-pw*.18,ph,pz0+pd/2+.55,8.2,'CROWSTEPS','Crow-stepped gable silhouette');
+  }else if(kind==='terraces'){
+    profile.parts.forEach((p,i)=>{
+      const g=new THREE.Group();
+      g.add(BOX(p.w*.82,.2,2.2,mat,0,0,0));
+      g.add(BOX(p.w*.74,.5,.18,mat,0,.35,1.0));
+      add(g,p.x,p.h,p.z+p.d/2+.52,3+i*.5,'TERRACE','Stepped roof terrace deck');
+    });
+  }else{
+    // vienna pavilion — centred on primary block
+    const pavW=Math.min(6,pw*.4);
+    const g=new THREE.Group();
+    g.add(BOX(pavW+.6,1.2,1.2,mat,0,0,0));
+    g.add(TRI(pavW+1.0,1.4,1.3,mat,0,.55,.1));
+    add(g,px0,ph,pz0+pd/2+.56,8.1,'PEDIMENT','Central Ringstrasse pediment');
+  }
+}
+
+// ─── BUILD SCENE ──────────────────────────────────────────────────
+let currentCity='vienna';
+
+function buildScene(key){
+  ITEMS.forEach(i=>scene.remove(i.mesh));ITEMS=[];
+  scene.children.filter(c=>c instanceof THREE.Line).forEach(l=>scene.remove(l));
+  ghostGroup.clear();labelGroup.clear();
+  particles.forEach(p=>pGroup.remove(p.m));particles=[];
+
+  const C=CITIES[key];
+  scene.background=new THREE.Color(C.sky);
+  scene.fog=new THREE.Fog(C.fog,80,240);
+
+  // Use bridge dims for camera + site outline; fall back to module defaults
+  const{uwM,udM,fhM,fl,totalW}=_bridgeDims();
+  cs.ty=fl*fhM*.45;
+  cs.r=Math.max(40,totalW*3.2);
+  setCam();
+
+  // Site lines derived from live dims
+  const sW=totalW/2+1.5, sD=udM/2+1.5;
+  [[-sW,sD,sW,sD],[-sW,-sD,sW,-sD],[-sW,sD,-sW,-sD],[sW,sD,sW,-sD]].forEach(l=>{
+    const g=new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(l[0],0.02,l[1]),new THREE.Vector3(l[2],0.02,l[3])]);
+    scene.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:0x4a4840})));
+  });
+
+  buildRadicalScene(C);
+  buildResonanceField();
+  buildStageUI();
+  rebuildOverlays();
+  updateInfo(key);
+  renderStyleDeck();
+  stageManualYard();
+  return;
+}
+
+// ─── PARTICLES ───────────────────────────────────────────────────
+let particles=[];
+function snapFlash(pos,col=0xffe8c0){
+  for(let i=0;i<8;i++){
+    const m=new THREE.Mesh(new THREE.SphereGeometry(0.05,4,4),
+      new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.9}));
+    const a=Math.random()*Math.PI*2,sp=.08+Math.random()*.12;
+    m.position.copy(pos);pGroup.add(m);
+    particles.push({m,vx:Math.cos(a)*sp,vy:.06+Math.random()*.1,vz:Math.sin(a)*sp,life:1});}
+}
+
+// ─── ANIMATION ───────────────────────────────────────────────────
+function snapEase(t){
+  if(t<0.82) return 1-Math.pow(1-t/0.82,3)*1.06;
+  return 1+Math.sin((t-0.82)/0.18*Math.PI)*.022*(1-t);
+}
+
+let playing=false,elapsed=0,speed=1,lastT=0;
+
+// Scrubber: in demo mode controls speed; in 4D mode scrubs to a week
+document.getElementById('spdCtrl').addEventListener('input', function(){
+  if(_4dMode && _scheduleData){
+    this._dragging = true;
+    const wk = parseFloat(this.value);
+    const totalWks = _scheduleData.totalWks || 34;
+    const targetElapsed = (wk / totalWks) * 11;
+    _snapItemsToElapsed(targetElapsed);
+    apply4DTints();
+    updateUI();
+    updateStats();
+    // Clear selected stage highlight on manual scrub
+    document.querySelectorAll('.sl-item.selected').forEach(el=>el.classList.remove('selected'));
+    setTimeout(()=>{ this._dragging = false; }, 80);
+  } else {
+    speed = parseFloat(this.value);
+  }
+});
+
+function doSnap(){
+  const md=ITEMS.reduce((m,i)=>Math.max(m,i.delay),0);
+  if(playing){playing=false;
+    document.getElementById('btnSnap').textContent='▶ Resume';
+    document.getElementById('btnSnap').className='btn go';
+    document.getElementById('crewChip').textContent='sequence paused';
+    return;}
+  if(playMode==='crew'||elapsed>md+1.8) startCinematic();
+  playing=true;
+  document.getElementById('btnSnap').textContent='⏸ Pause';
+  document.getElementById('btnSnap').className='btn ghost';
+  document.getElementById('crewChip').textContent='sequence active';
+}
+
+function startCinematic(){
+  playMode='auto'; heldItem=null; setTargetMarker(null); elapsed=0;
+  ITEMS.forEach(i=>{i.landed=false;i.mesh.visible=false;i.mesh.scale.setScalar(1);
+    i.mesh.position.set(i.fx,i.fy,i.fz);i.mesh.rotation.set(0,0,0);});
+  setGameCopy('Snap sequence running','Pieces are hovering into alignment and snapping each style-specific block into place.');
+  buildStageUI();
+  updateStats();
+}
+
+function doReset(){
+  playing=false;elapsed=0;heldItem=null;hoverItem=null;setTargetMarker(null);
+  ITEMS.forEach(i=>{i.t=0;i.landed=false;i.mesh.visible=true;
+    i.mesh.rotation.set(0,i.mesh.userData.landRy||0,0);});
+  particles.forEach(p=>pGroup.remove(p.m));particles=[];
+  document.getElementById('btnSnap').textContent='▶ Snap';
+  document.getElementById('btnSnap').className='btn go';
+  document.getElementById('seqName').textContent='Ready to build';
+  document.getElementById('pf').style.width='0%';
+  buildStageUI();
+  score=0;streak=0;
+  stageManualYard();
+}
+
+function switchCity(k){
+  if(!CITIES[k])return;currentCity=k;playing=false;elapsed=0;score=0;streak=0;
+  // Update city labels — in bridge mode show project context, else demo city info
+  const ciName=document.getElementById('ciName');
+  const ciPeriod=document.getElementById('ciPeriod');
+  if(_bridgeData&&_bridgeData.building){
+    const projName=_bridgeData._suiteProjName||(_bridgeData.project&&_bridgeData.project.name)||'';
+    if(ciName) ciName.textContent=projName||CITIES[k].name;
+    if(ciPeriod) ciPeriod.textContent='from AdriCad · '+CITIES[k].name;
+  } else {
+    if(ciName) ciName.textContent=CITIES[k].name;
+    if(ciPeriod) ciPeriod.textContent=CITIES[k].period;
+  }
+  // Update style deck active state
+  document.querySelectorAll('.style-card').forEach(c=>c.classList.toggle('active',c.getAttribute('onclick')?.includes("'"+k+"'")));
+  const pick=document.getElementById('cityPick');
+  if(pick) pick.value=k;
+  buildScene(k);
+}
+
+function tourNextStyle(){
+  const keys=Object.keys(CITIES);
+  const idx=keys.indexOf(currentCity);
+  switchCity(keys[(idx+1)%keys.length]);
+}
+
+function toggleOrbit(){
+  autoOrbit=!autoOrbit;
+  document.getElementById('orbitToggle').classList.toggle('active',autoOrbit);
+}
+function toggleLabels(){
+  showLabels=!showLabels;labelGroup.visible=showLabels;
+  document.getElementById('labelToggle').classList.toggle('active',showLabels);
+}
+function toggleGhosts(){
+  showGhosts=!showGhosts;ghostGroup.visible=showGhosts;
+  document.getElementById('ghostToggle').classList.toggle('active',showGhosts);
+}
+function toggleSection(){
+  sectionCut=!sectionCut;
+  renderer.clippingPlanes=sectionCut?[sectionPlane]:[];
+  document.getElementById('sectionToggle').classList.toggle('active',sectionCut);
+}
+
+
+// ─── UI ───────────────────────────────────────────────────────────
+function updateInfo(k){
+  const C=CITIES[k];
+  if(_bridgeData&&_bridgeData.building){
+    const projName=_bridgeData._suiteProjName||(_bridgeData.project&&_bridgeData.project.name)||'';
+    document.getElementById('ciName').textContent=projName||C.name;
+    document.getElementById('ciPeriod').textContent='from AdriCad · '+C.name;
+  } else {
+    document.getElementById('ciName').textContent=C.name;
+    document.getElementById('ciPeriod').textContent=C.period;
+  }
+  const _cp = document.getElementById('cityPick');
+  if(_cp) _cp.value = k;
+}
+function cssHex(n){return '#'+n.toString(16).padStart(6,'0');}
+function renderStyleDeck(){
+  const el=document.getElementById('styleDeck');
+  el.innerHTML=Object.entries(CITIES).map(([key,c])=>`
+    <button class="style-card ${key===currentCity?'active':''}" onclick="switchCity('${key}')">
+      <strong>${c.name.replace(' Stone','')}</strong>
+      <span>${c.mat}</span>
+      <div class="swatches">
+        <i class="sw" style="background:${cssHex(c.s1)}"></i>
+        <i class="sw" style="background:${cssHex(c.s2)}"></i>
+        <i class="sw" style="background:${cssHex(c.s3)}"></i>
+        <i class="sw" style="background:${cssHex(c.mortar)}"></i>
+        <i class="sw" style="background:${cssHex(c.glass)}"></i>
+      </div>
+    </button>`).join('');
+}
+// ── Stage type → chip colors (matches AdriPlan palette) ──────────
+const STAGE_CHIP = {
+  pre:     {bg:'#1e547422',border:'#1e5474',color:'#5a9ed4', label:'Design'},
+  permit:  {bg:'#1e547422',border:'#1e5474',color:'#5a9ed4', label:'Permit'},
+  mob:     {bg:'#66717c22',border:'#66717c',color:'#a0afb8', label:'Mob'},
+  exc:     {bg:'#5a3a1822',border:'#7c5a10',color:'#c8904a', label:'Excav'},
+  found:   {bg:'#7c5a1022',border:'#b87820',color:'#d4a860', label:'Found'},
+  struct:  {bg:'#7c5a1022',border:'#b87820',color:'#d4a860', label:'Structure'},
+  slab:    {bg:'#7c5a1022',border:'#b87820',color:'#d4a860', label:'Slab'},
+  mep:     {bg:'#3a689822',border:'#3a6898',color:'#6aa8d8', label:'MEP'},
+  env:     {bg:'#28604022',border:'#286040',color:'#5a9e7e', label:'Envelope'},
+  fin:     {bg:'#9e343222',border:'#9e3432',color:'#d47870', label:'Finishes'},
+  close:   {bg:'#66717c22',border:'#66717c',color:'#a0afb8', label:'Closeout'},
+};
+
+function _stageChipFor(phase){
+  if(!phase) return null;
+  return STAGE_CHIP[phase.type] || STAGE_CHIP.struct;
+}
+
+function buildStageUI(){
+  const phases = (_4dMode && _scheduleData)
+    ? _scheduleData.phases.filter(p=>!p.parallel)
+    : null;
+
+  document.getElementById('stageList').innerHTML = _activeStages.map((s,i) => {
+    const phase = phases ? phases[i] : null;
+    const chip  = _stageChipFor(phase);
+    const date  = phase ? `<span style="font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);margin-left:auto;flex-shrink:0;padding-left:4px">${_fmtSnapDate(phase.start)}</span>` : '';
+    const typeChip = chip
+      ? `<span style="font-family:'DM Mono',monospace;font-size:7.5px;padding:1px 5px;border-radius:2px;background:${chip.bg};border:1px solid ${chip.border};color:${chip.color};flex-shrink:0;letter-spacing:.04em">${chip.label}</span>`
+      : '';
+    const label = s.length > 28 ? s.slice(0,26) + '…' : s;
+    return `<div class="sl-item" id="si${i}" onclick="scrubToStage(${i})" title="${s}">
+      <div class="sl-dot"></div>
+      <span class="sl-label">${label}</span>
+      ${typeChip}
+      ${date}
+    </div>`;
+  }).join('');
+}
+
+// ── Scrub the 3D view to a specific stage index ───────────────────
+// Works in both demo mode (uses STAGE_AT timing) and 4D mode (uses real weeks)
+let _scrubAnimTarget = null;  // target elapsed for smooth transition
+let _scrubAnimActive = false;
+
+function scrubToStage(i){
+  playing = false;
+  document.getElementById('btnSnap').textContent = '▶ Resume';
+  document.getElementById('btnSnap').className = 'btn go';
+
+  let targetElapsed;
+
+  if(_4dMode && _scheduleData){
+    // Map stage index to its animation-elapsed position
+    targetElapsed = _activeStageAt[i] !== undefined ? _activeStageAt[i] : elapsed;
+    // Also sync week scrubber
+    const phases = _scheduleData.phases.filter(p=>!p.parallel);
+    const phase = phases[i];
+    if(phase){
+      const wk = _wksFromStart(phase.start, _scheduleData);
+      const scrub = document.getElementById('spdCtrl');
+      if(scrub) scrub.value = Math.round(wk);
+    }
+  } else {
+    // Demo mode: use STAGE_AT_DEFAULT positions, scaled to full item timeline
+    const md = ITEMS.reduce((m,it)=>Math.max(m,it.delay),0) || 11;
+    const t  = _activeStageAt[i] !== undefined ? _activeStageAt[i] : 0;
+    // STAGE_AT_DEFAULT tops out at ~10.2, item delays go higher — scale to match
+    targetElapsed = (t / 11) * (md + 1.4);
+  }
+
+  // Snap all items to the correct state at targetElapsed immediately
+  _snapItemsToElapsed(targetElapsed);
+
+  // Then do a short smooth camera nudge to acknowledge the click
+  _scrubAnimTarget = targetElapsed;
+  _scrubAnimActive = true;
+
+  if(_4dMode) apply4DTints();
+  updateUI();
+  updateStats();
+
+  // Highlight the clicked row briefly
+  document.querySelectorAll('.sl-item').forEach(el => el.classList.remove('selected'));
+  const sel = document.getElementById('si'+i);
+  if(sel){
+    sel.classList.add('selected');
+    if(sel.scrollIntoView) sel.scrollIntoView({block:'nearest',behavior:'smooth'});
+  }
+}
+
+function _snapItemsToElapsed(t){
+  elapsed = t;
+  ITEMS.forEach(it => {
+    const shouldLand = t >= it.delay + 1.1;
+    if(shouldLand){
+      it.landed = true;
+      it.mesh.visible = true;
+      it.mesh.position.set(it.tx, it.ty, it.tz);
+      it.mesh.rotation.set(0, it.mesh.userData.landRy||0, 0);
+      it.mesh.scale.setScalar(1);
+    } else if(t >= it.delay){
+      it.landed = false;
+      it.mesh.visible = true;
+      const lt = Math.min(1,(t - it.delay)/1.1);
+      const te = snapEase(lt);
+      it.mesh.position.x = it.fx + (it.tx - it.fx)*te;
+      it.mesh.position.y = it.fy + (it.ty - it.fy)*te;
+      it.mesh.position.z = it.fz + (it.tz - it.fz)*te;
+      it.mesh.rotation.set(0, (it.mesh.userData.landRy||0)*te, 0);
+      it.mesh.scale.setScalar(1);
+    } else {
+      it.landed = false;
+      it.mesh.visible = false;
+    }
+  });
+}
+function updateUI(){
+  const md=ITEMS.reduce((m,i)=>Math.max(m,i.delay),0);
+  const prog=Math.min(1,elapsed/(md+1.4));
+  document.getElementById('pf').style.width=(prog*100).toFixed(1)+'%';
+  let active=0;
+  _activeStageAt.forEach((t,i)=>{if(elapsed>=t)active=i;});
+  _activeStages.forEach((_,i)=>{
+    const el=document.getElementById('si'+i);if(!el)return;
+    el.classList.toggle('active',i===active);
+    el.classList.toggle('done',i<active);
+    if(i===active && el.scrollIntoViewIfNeeded) el.scrollIntoViewIfNeeded(true);
+  });
+
+  // 4D mode: show current date in sequence name
+  if(_4dMode && _scheduleData){
+    const phases = _scheduleData.phases.filter(p=>!p.parallel);
+    const activePhase = phases[active] || phases[phases.length-1];
+    const dateStr = activePhase ? _fmtSnapDate(activePhase.start) : '';
+    document.getElementById('seqName').textContent = elapsed>0.1
+      ? (dateStr ? dateStr + ' · ' : '') + (_activeStages[active]||'').slice(0,32)
+      : 'Push ▶ to begin';
+  } else {
+    document.getElementById('seqName').textContent=elapsed>0.1?_activeStages[active]:'Ready to build';
+  }
+
+  // Keep scrubber in sync during auto-play
+  if(_4dMode){
+    const wk = Math.round((elapsed/11) * (_scheduleData.totalWks||34));
+    const scrub = document.getElementById('spdCtrl');
+    if(scrub && !scrub._dragging) scrub.value = wk;
+  }
+
+  updateStats();
+  if(prog>=1){
+    playing=false;
+    document.getElementById('btnSnap').textContent='↺ Rebuild';
+    document.getElementById('btnSnap').className='btn go';
+    document.getElementById('seqName').textContent=_4dMode?'Handover reached':'Assembly complete';
+    document.getElementById('crewChip').textContent='sequence complete';
+    setTargetMarker(null);
+  }
+}
+
+function _fmtSnapDate(iso){
+  if(!iso) return '';
+  try{
+    const d=new Date(iso);
+    return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
+  }catch(e){return '';}
+}
+
+// Apply 4D tint overlay to items based on their snapTag and current elapsed time
+// Called once per frame when _4dMode is true
+function apply4DTints(){
+  if(!_4dMode || !_scheduleData) return;
+  const phases = _scheduleData.phases.filter(p=>!p.parallel);
+  const totalWks = _scheduleData.totalWks || 1;
+  // Current "construction week" based on elapsed position
+  const currentWk = (elapsed / 11) * totalWks;
+
+  ITEMS.forEach(it => {
+    if(!it.landed) return;
+    const tag = it.snapTag || 'structure';
+    // Find which schedule phase this tag belongs to, and whether it's current/past
+    const phaseIdx = phases.findIndex(p => p.snapTag === tag);
+    if(phaseIdx < 0) return;
+    const phase = phases[phaseIdx];
+    const phaseMidWk = _wksFromStart(phase.start, _scheduleData) + phase.durationWks/2;
+    const isActive = Math.abs(currentWk - phaseMidWk) < phase.durationWks * 1.5;
+    const isPast   = currentWk > phaseMidWk + phase.durationWks;
+
+    // Apply emissive tint via material walk
+    const tintHex = _4dTint(tag);
+    const emissiveStrength = isActive ? 0.18 : isPast ? 0.0 : 0.06;
+    it.mesh.traverse(obj => {
+      if(obj.isMesh && obj.material && obj.material.emissive){
+        obj.material.emissive.setHex(isActive ? tintHex : 0x000000);
+        obj.material.emissiveIntensity = emissiveStrength;
+      }
+    });
+  });
+}
+
+function _wksFromStart(dateStr, sched){
+  if(!sched || !sched.buildStart || !dateStr) return 0;
+  try{
+    const ms = new Date(dateStr) - new Date(sched.buildStart);
+    return Math.max(0, ms / (7*24*3600*1000));
+  }catch(e){ return 0; }
+}
+
+// Hover detection
+const raycaster=new THREE.Raycaster();
+const mouse=new THREE.Vector2(-9,-9);
+cvs.addEventListener('mousemove',e=>{
+  const r=cvs.getBoundingClientRect();
+  mouse.x=(e.clientX-r.left)/r.width*2-1;
+  mouse.y=-((e.clientY-r.top)/r.height)*2+1;});
+let lastHoverKey='';
+function checkHover(){
+  raycaster.setFromCamera(mouse,camera);
+  const interactive=ITEMS.filter(i=>i.mesh.visible&&i!==heldItem);
+  const targets=interactive.map(i=>i.mesh);
+  const hits=raycaster.intersectObjects(targets,true);
+  let info=null; hoverItem=null;
+  if(hits.length){
+    let obj=hits[0].object;
+    for(let k=0;k<5&&obj&&!obj.userData.info;k++)obj=obj.parent;
+    if(obj&&obj.userData.info){
+      info=obj.userData.info;
+      hoverItem=interactive.find(i=>i.mesh===obj || i.mesh.children.includes(obj) || obj.parent===i.mesh) || null;
+    }
+  }
+  const key=info?JSON.stringify(info):'';
+  if(key===lastHoverKey)return;lastHoverKey=key;
+  const el=document.getElementById('infoBlock');
+  el.style.opacity=info?'1':'0.45';
+  if(info){
+    document.getElementById('ibCat').textContent=info.cat||'—';
+    document.getElementById('ibName').textContent=info.name||'—';
+    document.getElementById('ibMat').textContent=info.mat||'—';
+    document.getElementById('ibDim').textContent=info.dims||'—';
+    document.getElementById('ibWt').textContent=info.wt||'—';
+    document.getElementById('ibChases').innerHTML=(info.chases||[]).map(c=>{
+      const col={pipe:'#3a6898',duct:'#b85820',elec:'#70a020'}[c]||'#888';
+      const lbl={pipe:'Water / Drain',duct:'HVAC Duct',elec:'Electrical'}[c]||c;
+      return`<span class="cht" style="background:${col}22;color:${col};border:1px solid ${col}55">${lbl}</span>`;
+    }).join('');
+  }else{
+    document.getElementById('ibCat').textContent='HOVER A BLOCK';
+    document.getElementById('ibName').textContent='—';
+    document.getElementById('ibMat').textContent='—';
+    document.getElementById('ibDim').textContent='—';
+    document.getElementById('ibWt').textContent='—';
+    document.getElementById('ibChases').innerHTML='';
+  }
+}
+
+// ─── MAIN LOOP ────────────────────────────────────────────────────
+function loop(ts){
+  requestAnimationFrame(loop);
+  const dt=Math.min((ts-lastT)/1000,0.05);lastT=ts;
+  if(autoOrbit&&!drag){cs.theta+=dt*0.04;setCam();}
+  if(heldItem){
+    heldItem.mesh.position.x+=(pointerWorld.x-heldItem.mesh.position.x)*0.28;
+    heldItem.mesh.position.z+=(pointerWorld.z-heldItem.mesh.position.z)*0.28;
+    heldItem.mesh.position.y+=(heldItem.ty+1.2-heldItem.mesh.position.y)*0.18;
+    heldItem.mesh.rotation.y+=dt*.9;
+  }
+  if(targetMarker){
+    const pulse=.95+Math.sin(ts*.008)*.09;
+    targetMarker.scale.set(pulse,pulse,pulse);
+    targetMarker.material.opacity=.28+Math.sin(ts*.008)*.08;
+  }
+
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.m.position.x+=p.vx;p.m.position.y+=p.vy;p.m.position.z+=p.vz;
+    p.vy-=0.005;p.life-=dt*2;p.m.material.opacity=Math.max(0,p.life*.8);
+    if(p.life<=0){pGroup.remove(p.m);particles.splice(i,1);}}
+
+  if(playing){
+    elapsed+=dt*speed;
+    const crewItem=activeCrewItem();
+    updateSnapFocus(crewItem);
+    updateResonance(crewItem,ts);
+    ITEMS.forEach(it=>{
+      if(elapsed<it.delay){it.mesh.visible=false;return;}
+      it.mesh.visible=true;
+      const lt=Math.min(1,(elapsed-it.delay)/1.1);
+      const te=snapEase(lt);
+      it.mesh.position.x=it.fx+(it.tx-it.fx)*te;
+      it.mesh.position.y=it.fy+(it.ty-it.fy)*te;
+      it.mesh.position.z=it.fz+(it.tz-it.fz)*te;
+      const rot=(1-te)*0.85;
+      it.mesh.rotation.x=it.rx0*rot;
+      it.mesh.rotation.y=(it.mesh.userData.landRy||0)*te+it.ry0*rot;
+      it.mesh.rotation.z=it.rz0*rot;
+      if(lt>=1&&!it.landed){
+        it.landed=true;
+        it.mesh.position.set(it.tx,it.ty,it.tz);
+        it.mesh.rotation.set(0,it.mesh.userData.landRy||0,0);
+        score+=25; streak++;
+        snapFlash(new THREE.Vector3(it.tx,it.ty,it.tz),CITIES[currentCity].s1);}
+    });
+    updateUI();
+    if(_4dMode) apply4DTints();
+  }else{
+    setTargetMarker(null);
+    updateResonance(null,ts);
+  }
+  labelGroup.children.forEach(lbl=>{
+    const it=lbl.userData.item;
+    lbl.visible=showLabels&&it&&it.landed;
+    lbl.lookAt(camera.position);
+  });
+  checkHover();
+  renderer.render(scene,camera);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────
+// Load bridge FIRST so schedule state is set before buildScene runs
+loadAdriCadBridge();
+buildScene(currentCity);
+setCam();loop(0);
+</script>
+
+<!-- ── Login Modal ────────────────────────────────────────────── -->
+<div id="loginModal">
+  <div class="lm-card">
+    <button class="lm-close" onclick="closeLoginModal()" title="Close">×</button>
+    <div class="lm-title">Sign in</div>
+    <div class="lm-sub">ADRISUITE · ADRISNAP</div>
+    <button class="lm-google" onclick="_snapSignInGoogle()">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+      Continue with Google
+    </button>
+    <div class="lm-divider">— or sign in with email —</div>
+    <input class="lm-email" id="lmEmail" type="email" placeholder="email@example.com" autocomplete="email">
+    <input class="lm-pw" id="lmPw" type="password" placeholder="password" autocomplete="current-password">
+    <button class="lm-submit" onclick="_snapSignInEmail()">Sign in</button>
+    <div class="lm-msg" id="lmMsg"></div>
+  </div>
+</div>
+
+<!-- ── AdriCad Sync Panel ───────────────────────────────────────── -->
+<div id="syncOverlay" style="display:none" onclick="closeSyncPanel()"></div>
+<div id="syncPanel" style="display:none">
+  <div class="sp-head">Connect to AdriCad</div>
+  <div class="sp-sub">Project handoff</div>
+  <div id="syncLocalRow" class="sp-localrow" style="display:none"></div>
+  <div class="sp-hint" style="margin-top:10px">
+    Open a project in AdriCad, then click the <strong>AdriSnap</strong> tab in its nav bar.
+    Your building dimensions, floor count, and style will load automatically.<br><br>
+    Or paste the AdriCad URL below if you copied it manually.
+  </div>
+  <textarea id="syncInput" class="sp-input" placeholder="https://adricad.com/?project=..."></textarea>
+  <div class="sp-row">
+    <button class="btn go" onclick="doLoadFromURL()">Load</button>
+    <button class="btn ghost" onclick="closeSyncPanel()">Cancel</button>
+  </div>
+  <div id="syncMsg" class="sp-msg"></div>
+</div>
+
+</body></html>
