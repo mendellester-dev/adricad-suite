@@ -1,0 +1,46 @@
+# Netlify configuration for AdriSuite
+#
+# Each tool deploys as its own Netlify site pointing to its tools/ subfolder.
+# Set up four separate Netlify sites, each with:
+#   Base directory: tools/adricad   (or adribim, adriplan, adrisnap)
+#   Publish directory: .
+#   Build command: (none — static HTML)
+#
+# This file is a reference config. Copy it into each tool folder as needed,
+# or use netlify.toml at root with redirects if deploying as one site.
+
+[build]
+  publish = "tools/adricad"
+
+# -------------------------------------------------------
+# Per-tool redirect rules (if deploying as a single site)
+# -------------------------------------------------------
+# [[redirects]]
+#   from = "/cad/*"
+#   to = "/tools/adricad/:splat"
+#   status = 200
+#
+# [[redirects]]
+#   from = "/bim/*"
+#   to = "/tools/adribim/:splat"
+#   status = 200
+#
+# [[redirects]]
+#   from = "/plan/*"
+#   to = "/tools/adriplan/:splat"
+#   status = 200
+#
+# [[redirects]]
+#   from = "/snap/*"
+#   to = "/tools/adrisnap/:splat"
+#   status = 200
+
+# -------------------------------------------------------
+# Security headers
+# -------------------------------------------------------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

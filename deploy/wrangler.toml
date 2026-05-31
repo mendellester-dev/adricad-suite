@@ -1,0 +1,25 @@
+# Cloudflare Pages configuration
+# Deploy each tool as a separate Pages project, or use one project with path routing.
+#
+# Setup via Cloudflare dashboard or CLI:
+#   npx wrangler pages project create adricad
+#   npx wrangler pages deploy tools/adricad --project-name=adricad
+#
+# Repeat for adribim, adriplan, adrisnap.
+
+# -------------------------------------------------------
+# Single-site config (if routing all tools under one domain)
+# -------------------------------------------------------
+name = "adrisuite"
+compatibility_date = "2026-01-01"
+
+[env.production]
+  # No build step — static HTML
+
+# -------------------------------------------------------
+# Per-tool projects (recommended — separate domains per tool)
+# -------------------------------------------------------
+# adricad  → adricad.pages.dev  (or custom domain)
+# adribim  → adribim.pages.dev
+# adriplan → adriplan.pages.dev
+# adrisnap → adrisnap.pages.dev

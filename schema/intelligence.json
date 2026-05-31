@@ -1,0 +1,68 @@
+{
+  "_note": "Intelligence schema — building typologies, cost ratios, regulatory parameters. Grows independently of any project. The system's moat.",
+  "_status": "skeleton — needs population from real project data",
+
+  "typologies": {
+    "residential_multi": {
+      "label": "Multi-unit Residential",
+      "typical_floor_height_m": 2.9,
+      "typical_unit_sqm": { "min": 60, "max": 120 },
+      "parking_ratio": 1.2,
+      "mep_complexity": "medium"
+    },
+    "residential_single": {
+      "label": "Single Family",
+      "typical_floor_height_m": 2.8,
+      "mep_complexity": "low"
+    },
+    "commercial_office": {
+      "label": "Commercial / Office",
+      "typical_floor_height_m": 3.2,
+      "mep_complexity": "high"
+    }
+  },
+
+  "cost_ratios": {
+    "_note": "ILS per sqm — Israeli market, to be verified against real bids",
+    "_currency": "ILS",
+    "_market": "Israel",
+    "residential_multi": {
+      "structure_ils_sqm": null,
+      "envelope_ils_sqm": null,
+      "mep_ils_sqm": null,
+      "finishes_ils_sqm": null,
+      "site_ils_sqm": null
+    }
+  },
+
+  "regulatory": {
+    "_note": "Israeli municipal regulatory fingerprints — to be built out per municipality",
+    "municipalities": {
+      "tel_aviv": {
+        "max_lot_coverage": null,
+        "typical_permit_weeks": null,
+        "notes": ""
+      },
+      "jerusalem": {
+        "max_lot_coverage": null,
+        "typical_permit_weeks": null,
+        "notes": ""
+      }
+    }
+  },
+
+  "spatial_patterns": {
+    "_note": "Patterns that reliably pass permits or reliably cause problems — to be populated from real projects",
+    "passing": [],
+    "problematic": []
+  },
+
+  "quantity_ratios": {
+    "_note": "Historical ratios for QTO confidence checking — e.g. concrete per sqm for a given typology",
+    "residential_multi": {
+      "concrete_m3_per_sqm": null,
+      "rebar_kg_per_sqm": null,
+      "cmu_units_per_sqm_wall": null
+    }
+  }
+}
