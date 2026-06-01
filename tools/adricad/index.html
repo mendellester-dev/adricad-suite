@@ -2378,10 +2378,10 @@ telaviv:{UW:7.0,UD:15,label:'Tel Aviv Florentin – Eclectic Mandate',
 //   intW  = interior room boundary stroke
 //   partyW = shared wall between units (same as exterior)
 const WALL_W = {
-  'masonry':       {ext:7,  int:2.0, party:7},
-  'masonry-heavy': {ext:10, int:2.5, party:10},
-  'concrete':      {ext:4,  int:1.2, party:4},
-  'timber-frame':  {ext:3,  int:1.0, party:3},
+  'masonry':       {ext:10, int:3,   party:10},
+  'masonry-heavy': {ext:14, int:3.5, party:14},
+  'concrete':      {ext:6,  int:2,   party:6},
+  'timber-frame':  {ext:4,  int:1.5, party:4},
 };
 function getWallW(){ const c=PLANS[city]; const wc=(c&&c.wallClass)||'masonry'; return WALL_W[wc]||WALL_W.masonry; }
 function getCircType(){ const c=PLANS[city]; return (c&&c.circType)||'side-hall'; }
@@ -2731,29 +2731,31 @@ function buildInterior(){
   const units=parseInt(document.getElementById('unitCount').value)||1;
   const FL=gFloors||d.FL, UW=gUW||d.UW, UD=gUD||d.UD, FH=gFH||d.FH, wC=d.wC||0.45;
   const CX=(units-1)*UW/2;
-  const cfg=PLANS[city];  // no fallback — wrong coords would bleed outside building envelope
+  const cfg=PLANS[city];
   const hasPlanData=!!cfg;
-  const planCfg=cfg||PLANS.brooklyn; // only used for wallClass, not room coordinates
+  const planCfg=cfg||PLANS.brooklyn;
   const group=new THREE.Group();
 
   // Wall class → thicknesses
   const wallClass=(planCfg.wallClass)||'masonry';
-  const intT = wallClass==='masonry'?0.20:0.15;  // interior partition
-  const extT = wallClass==='masonry'?0.45:0.30;  // exterior wall (to inset slab)
-  const slabT = 0.28;   // structural slab thickness
+  const intT = wallClass==='masonry'?0.20:0.15;
+  const extT = wallClass==='masonry'?0.45:0.30;
+  const slabT = 0.28;
 
-  // ── Materials (transparent, depthWrite off for correct blending) ─
+  // ── Materials ────────────────────────────────────────────────
   const slabMat=new THREE.MeshPhongMaterial({
     color:0xb8b0a4, shininess:6, transparent:true, opacity:0.72, depthWrite:false, side:THREE.DoubleSide
   });
   const partMat=new THREE.MeshPhongMaterial({
-    color:0xd0c8bc, shininess:3, transparent:true, opacity:0.78, depthWrite:false, side:THREE.DoubleSide
+    color:0xd0c8bc, shininess:3, transparent:true, opacity:0.82, depthWrite:false, side:THREE.DoubleSide
+  });
+  const glassMat=new THREE.MeshPhongMaterial({
+    color:0xaad4e8, shininess:80, transparent:true, opacity:0.28, depthWrite:false, side:THREE.DoubleSide
   });
 
-  // ── Floor slabs: single layer, interior span only ─────────────
-  // Inset from exterior walls to avoid z-fighting with masonry shell
-  const slabDepth = UD - extT*2;   // front and rear walls
-  const slabWidth = units*UW;      // full building width (party walls are thin)
+  // ── Floor slabs ──────────────────────────────────────────────
+  const slabDepth = UD - extT*2;
+  const slabWidth = units*UW;
   for(let f=1;f<FL;f++){
     const y = f*FH;
     const g=new THREE.BoxGeometry(slabWidth, slabT, slabDepth);
@@ -2763,31 +2765,114 @@ function buildInterior(){
     group.add(m);
   }
 
-  // ── Interior partition walls per floor per unit ───────────────
-  // Only for cities that have PLANS data — avoids wrong coordinates bleeding outside envelope
   if(hasPlanData) cfg.floors.forEach(function(floor,fi){
     if(fi>=FL) return;
     const y0=fi*FH, wallH=FH-slabT;
+    const floorY = y0 + 0.02; // just above slab surface
+
+    // ── Interior partition walls (fix: use w.lo/w.hi not w.ys/w.ye) ─
     const walls=computeInteriorWalls(floor.rooms);
     for(let u=0;u<units;u++){
       const ox=u*UW-CX;
       walls.forEach(function(w){
+        if(w.sideA.length===0||w.sideB.length===0) return;
         let mesh;
         if(w.axis==='x'){
           const wx = ox + w.pos - UW/2;
-          const depth = w.ye - w.ys;
-          const wz = -(w.ys+w.ye)/2 + wC;
+          const depth = w.hi - w.lo;
+          const wz = -(w.lo+w.hi)/2 + wC;
           mesh=new THREE.Mesh(new THREE.BoxGeometry(intT, wallH, depth), partMat);
           mesh.position.set(wx, y0+wallH/2, wz);
         } else {
-          const width = w.xe - w.xs;
-          const wx = ox + (w.xs+w.xe)/2 - UW/2;
+          const width = w.hi - w.lo;
+          const wx = ox + (w.lo+w.hi)/2 - UW/2;
           const wz = -w.pos + wC;
           mesh=new THREE.Mesh(new THREE.BoxGeometry(width, wallH, intT), partMat);
           mesh.position.set(wx, y0+wallH/2, wz);
         }
         mesh.castShadow=false; mesh.receiveShadow=false;
         group.add(mesh);
+      });
+    }
+
+    // ── Room floor fills + furniture ─────────────────────────────
+    for(let u=0;u<units;u++){
+      const ox=u*UW-CX;
+      floor.rooms.forEach(function(room){
+        const [name,rx,ry,rw,rh,col]=room;
+        const roomType=_roomType(name);
+        if(roomType==='outdoor') return; // terraces don't get floor fills here
+
+        // Floor fill plane
+        const hexCol = parseInt((col||'#f0ede8').replace('#',''), 16);
+        const floorMat=new THREE.MeshPhongMaterial({
+          color:hexCol, shininess:2, transparent:true, opacity:0.55,
+          depthWrite:false, side:THREE.DoubleSide
+        });
+        const cx3 = ox + rx + rw/2 - UW/2;
+        const cz3 = -(ry + rh/2) + wC;
+        const fp=new THREE.Mesh(new THREE.PlaneGeometry(rw-0.05, rh-0.05), floorMat);
+        fp.rotation.x=-Math.PI/2;
+        fp.position.set(cx3, floorY, cz3);
+        fp.castShadow=false; fp.receiveShadow=false;
+        group.add(fp);
+
+        // Window glazing — transparent panes on exterior-facing walls
+        // Front exterior (ry=0): glass plane at z = wC + extT/2
+        const winH = Math.min(FH*0.55, 1.8); // window height in metres
+        const winYcenter = y0 + FH*0.55; // window centre height
+        const winGap = 0.12; // inset from wall face
+        if(ry < 0.05 && roomType!=='wet' && roomType!=='circ'){
+          const wg=new THREE.Mesh(new THREE.PlaneGeometry(rw*0.6, winH), glassMat);
+          wg.position.set(cx3, winYcenter, wC + extT/2 - winGap);
+          group.add(wg);
+        }
+        // Rear exterior
+        if(Math.abs(ry+rh-UD)<0.05 && roomType!=='wet' && roomType!=='circ'){
+          const wg=new THREE.Mesh(new THREE.PlaneGeometry(rw*0.5, winH), glassMat);
+          wg.position.set(cx3, winYcenter, -(UD-extT/2)+wC+winGap);
+          group.add(wg);
+        }
+
+        // ── Furniture — simple extruded primitives ───────────────
+        // Scaled to room size, placed at room centre with slight offsets
+        const cx=cx3, cz=cz3, fy=floorY;
+        const furMat=new THREE.MeshPhongMaterial({
+          color:0x8a7a6c, shininess:8, transparent:true, opacity:0.70, depthWrite:false
+        });
+        const cushMat=new THREE.MeshPhongMaterial({
+          color:0xc4b8a8, shininess:4, transparent:true, opacity:0.70, depthWrite:false
+        });
+
+        function box(w,h,d,px,py,pz,mat){
+          const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat||furMat);
+          m.position.set(cx+px, fy+py+h/2, cz+pz);
+          m.castShadow=false; m.receiveShadow=false;
+          group.add(m);
+        }
+
+        if(roomType==='sleeping'){
+          // Bed — 1.4×0.5×2.0m pushed to rear wall
+          const bw=Math.min(rw*0.7,1.6), bd=Math.min(rh*0.5,2.0);
+          box(bw,0.50,bd, 0, 0, rh*0.25, cushMat);        // mattress
+          box(bw,0.60,0.18, 0, 0.50/2, rh*0.25-bd/2, furMat); // headboard
+          box(0.35,0.45,0.35, bw/2-0.2, 0, rh*0.25-bd/2-0.3, furMat); // bedside table
+        } else if(roomType==='living'){
+          // Sofa + coffee table
+          const sw=Math.min(rw*0.65,2.2);
+          box(sw,0.75,0.85, 0,0, -rh*0.22, cushMat);    // sofa
+          box(sw*0.6,0.38,0.55, 0,0, -rh*0.22+0.75, furMat); // coffee table
+        } else if(roomType==='service'){
+          // Kitchen counter along rear wall
+          const kw=Math.min(rw*0.9,3.0);
+          box(kw,0.90,0.60, 0,0, rh*0.30, furMat);   // base cabinets
+          box(kw*0.5,0.05,0.55, -kw*0.2, 0.90, rh*0.30, furMat); // countertop overhang
+        } else if(roomType==='wet'){
+          // Toilet + basin
+          box(0.40,0.40,0.70, -rw*0.18,0, rh*0.22, furMat); // toilet
+          box(0.55,0.10,0.42, rw*0.18,0.72, rh*0.22, furMat); // basin
+        }
+        // Stair / circ rooms: no furniture
       });
     }
   });
@@ -2961,29 +3046,42 @@ function drawPlan(){
     const ux=ox+u*cfg.UW*sc;
     const ww = getWallW();
 
-    // ── WALLS: draw exterior box + interior partitions with door openings cut out
-    // We draw walls as filled poché rectangles, then erase the door gap, then
-    // redraw the door leaf + swing arc. This gives a genuine architectural opening.
+    // ── WALLS: filled poché bands — exterior frame + interior partitions ─────────
+    // Approach: draw wall as solid filled rectangles ON TOP of room fills.
+    // Exterior walls = four filled bands around the unit perimeter.
+    // Interior partitions = filled rects computed from shared room edges.
+    // This gives genuine architectural poché with real thickness.
 
-    // First pass: stroke all interior partitions
+    // ── Interior partitions (draw first so exterior bands overdraw at corners) ──
+    const intWalls = computeInteriorWalls(adjRooms);
     ctx.save();
-    ctx.strokeStyle='#2a2418';
-    ctx.lineWidth=ww.int;
-    for(const room of adjRooms){
-      const [,rx,ry,rw,rh]=room;
-      ctx.strokeRect(ux+rx*sc,oy+ry*sc,rw*sc,rh*sc);
+    ctx.fillStyle = '#2c2820'; // interior partition poche — slightly lighter than exterior
+    for(const w of intWalls){
+      if(w.sideA.length===0 || w.sideB.length===0) continue; // skip exterior edges
+      if(w.axis==='x'){ // vertical wall at x = w.pos
+        ctx.fillRect(ux + w.pos*sc - ww.int/2, oy + w.lo*sc, ww.int, (w.hi-w.lo)*sc);
+      } else { // horizontal wall at y = w.pos
+        ctx.fillRect(ux + w.lo*sc, oy + w.pos*sc - ww.int/2, (w.hi-w.lo)*sc, ww.int);
+      }
     }
     ctx.restore();
 
-    // Exterior / party walls — heavier poché
+    // ── Exterior wall — four filled bands around the perimeter ────────────────
     ctx.save();
-    ctx.strokeStyle='#0e0c08';
-    ctx.lineWidth=ww.ext;
-    ctx.strokeRect(ux+ww.ext/2,oy+ww.ext/2,cfg.UW*sc-ww.ext,cfg.UD*sc-ww.ext);
+    ctx.fillStyle = '#1a1810'; // exterior poche — dark charcoal
+    const uw = cfg.UW*sc, ud = cfg.UD*sc;
+    ctx.fillRect(ux,          oy,               uw,      ww.ext); // top
+    ctx.fillRect(ux,          oy+ud-ww.ext,     uw,      ww.ext); // bottom
+    ctx.fillRect(ux,          oy,               ww.ext,  ud);     // left
+    ctx.fillRect(ux+uw-ww.ext,oy,               ww.ext,  ud);     // right
     ctx.restore();
+
+    // ── Party wall between units — solid filled band ───────────────────────────
     if(u>0){
-      ctx.save();ctx.strokeStyle='#0e0c08';ctx.lineWidth=ww.party;
-      ctx.beginPath();ctx.moveTo(ux,oy);ctx.lineTo(ux,oy+drawH);ctx.stroke();ctx.restore();
+      ctx.save();
+      ctx.fillStyle='#1a1810';
+      ctx.fillRect(ux - ww.party/2, oy, ww.party, ud);
+      ctx.restore();
     }
 
     // Second pass: cut door openings into walls, then draw doors
@@ -2991,7 +3089,26 @@ function drawPlan(){
       const room=adjRooms[ri];
       const [name,rx,ry,rw,rh,col,ds,dp]=room;
       const px=ux+rx*sc, py=oy+ry*sc, pw=rw*sc, ph=rh*sc;
-      if(ds) _drawDoorWithGap(ctx,px,py,pw,ph,sc,ds,dp,ww.int,col||'#f0ede8');
+      // Detect whether this door is on an exterior wall so we erase the right poche depth
+      const _onExtB = ds==='B' && Math.abs(ry+rh - cfg.UD) < 0.15;
+      const _onExtT = ds==='T' && ry < 0.15;
+      const _onExtL = ds==='L' && rx < 0.15;
+      const _onExtR = ds==='R' && Math.abs(rx+rw - cfg.UW) < 0.15;
+      const _doorW  = (_onExtB||_onExtT||_onExtL||_onExtR) ? ww.ext : ww.int;
+      if(ds) _drawDoorWithGap(ctx,px,py,pw,ph,sc,ds,dp,_doorW,col||'#f0ede8');
+
+      // ── Window symbols on exterior walls ─────────────────────────────────────
+      // For each exterior side of this room (excluding the door side), draw windows.
+      // Rooms with doors on exterior walls only get windows on other exterior edges.
+      const _extSides = [];
+      if(ry < 0.15)                      _extSides.push('T');
+      if(Math.abs(ry+rh - cfg.UD) < 0.15) _extSides.push('B');
+      if(rx < 0.15)                      _extSides.push('L');
+      if(Math.abs(rx+rw - cfg.UW) < 0.15) _extSides.push('R');
+      for(const es of _extSides){
+        if(es === ds) continue; // door already on this side — skip windows
+        _drawWindowsOnWall(ctx, px, py, pw, ph, sc, es, ww.ext, name);
+      }
     }
 
     // Third pass: furniture + labels on top
@@ -3135,6 +3252,83 @@ function _drawDoorWithGap(ctx,px,py,pw,ph,sc,side,pos,wallW,roomCol){
 // Legacy thin wrapper kept for any external callers
 function drawDoor(ctx,px,py,pw,ph,sc,side,pos){
   _drawDoorWithGap(ctx,px,py,pw,ph,sc,side,pos,2,'#f0ede8');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WINDOW SYMBOLS ON EXTERIOR WALLS
+// Draws architectural plan window symbols: a gap in the wall poché filled with
+// a lighter tone, flanked by thin reveal lines, with a centre glass line.
+// Called for rooms that sit on the building perimeter.
+// extSides: array of sides that are exterior, e.g. ['T','B']
+// ─────────────────────────────────────────────────────────────────────────────
+function _drawWindowsOnWall(ctx, px, py, pw, ph, sc, extSide, wallW, roomType){
+  // Don't add windows to wet rooms, stairs, or service rooms on exterior
+  // (they may have a small window but not the primary glazed openings)
+  const noWin = /stair|shaft|lift|elevator|wc|toilet|bath|douche|bagno|bad|salle de bain|lavabo|shower/.test(roomType.toLowerCase());
+
+  // Window proportions: one window per ~2.5m of wall, min 0.8m wide, max 1.8m wide
+  const wallLenM = (extSide==='T'||extSide==='B') ? pw/sc : ph/sc;
+  const nWin = Math.max(1, Math.round(wallLenM / 2.5));
+  const winWM = Math.min(1.6, Math.max(0.7, (wallLenM * 0.5) / nWin)); // total glazing ~ 50% of wall
+  const winWPx = winWM * sc;
+  const gapFill = '#e8f4fc';   // glass / glazing tone
+  const glassLine = '#a8c8d8'; // centre glass line
+  const revealLine = '#2c2820';
+
+  const poche = wallW;
+
+  for(let i=0; i<nWin; i++){
+    const t = (i + 0.5) / nWin; // fractional position along wall (centred in each segment)
+    let wx, wy, ww2, wh2; // window rect coords
+    let gx1, gy1, gx2, gy2; // centre glass line
+
+    if(extSide==='T'){
+      wx = px + pw*t - winWPx/2;
+      wy = py;
+      ww2 = winWPx; wh2 = poche;
+      gx1 = wx + 2; gy1 = py + poche/2; gx2 = wx + ww2 - 2; gy2 = gy1;
+    } else if(extSide==='B'){
+      wx = px + pw*t - winWPx/2;
+      wy = py + ph - poche;
+      ww2 = winWPx; wh2 = poche;
+      gx1 = wx + 2; gy1 = py + ph - poche/2; gx2 = wx + ww2 - 2; gy2 = gy1;
+    } else if(extSide==='L'){
+      wx = px;
+      wy = py + ph*t - winWPx/2;
+      ww2 = poche; wh2 = winWPx;
+      gx1 = px + poche/2; gy1 = wy + 2; gx2 = gx1; gy2 = wy + wh2 - 2;
+    } else { // R
+      wx = px + pw - poche;
+      wy = py + ph*t - winWPx/2;
+      ww2 = poche; wh2 = winWPx;
+      gx1 = px + pw - poche/2; gy1 = wy + 2; gx2 = gx1; gy2 = wy + wh2 - 2;
+    }
+
+    if(noWin) continue;
+
+    // Fill the wall gap with glazing tone
+    ctx.save();
+    ctx.fillStyle = gapFill;
+    ctx.fillRect(wx, wy, ww2, wh2);
+
+    // Glass centre line
+    ctx.strokeStyle = glassLine;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(gx1, gy1); ctx.lineTo(gx2, gy2); ctx.stroke();
+
+    // Reveal lines at each jamb (thin dark verticals/horizontals)
+    ctx.strokeStyle = revealLine;
+    ctx.lineWidth = 0.8;
+    if(extSide==='T'||extSide==='B'){
+      ctx.beginPath(); ctx.moveTo(wx+1, wy); ctx.lineTo(wx+1, wy+wh2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(wx+ww2-1, wy); ctx.lineTo(wx+ww2-1, wy+wh2); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.moveTo(wx, wy+1); ctx.lineTo(wx+ww2, wy+1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(wx, wy+wh2-1); ctx.lineTo(wx+ww2, wy+wh2-1); ctx.stroke();
+    }
+    ctx.restore();
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
