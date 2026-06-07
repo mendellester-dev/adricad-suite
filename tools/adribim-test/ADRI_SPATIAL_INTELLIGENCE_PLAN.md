@@ -421,6 +421,155 @@ These clearances must be represented in the zone graph as reservations — when 
 
 ---
 
+---
+
+## The Component Library
+
+The assembly detail layer describes what components are needed and where. The component library is the data structure that makes those components computable — queryable by the routing engine, placeable in the zone graph, and exportable to a coordination drawing or installation instruction set.
+
+Without the library, the assembly layer is documentation. With it, Adri can place a P-trap, know its dimensions, know what connects to it on each port, know what has to be installed before it can go in, and know what clearance it needs around it. The library is what makes the difference between a report and a buildable instruction.
+
+### Library Entry Structure
+
+Every component in the library is a typed object with the following fields:
+
+```json
+{
+  "id": "DWV-PTRAP-2IN",
+  "discipline": "plumbing_dwv",
+  "category": "trap",
+  "label": "P-Trap, 2\" DWV",
+  "description": "Standard P-trap for 2\" sanitary drain branch. Required at every fixture outlet.",
+
+  "geometry": {
+    "body_envelope_mm": { "x": 200, "y": 150, "z": 120 },
+    "installation_envelope_mm": { "x": 300, "y": 300, "z": 200 },
+    "ports": [
+      { "id": "inlet",  "type": "dwv_socket",  "diameter_mm": 50, "direction": [0, 0, 1],  "offset_mm": [0, 75, 0]  },
+      { "id": "outlet", "type": "dwv_spigot",  "diameter_mm": 50, "direction": [1, 0, 0],  "offset_mm": [100, 0, 0] }
+    ]
+  },
+
+  "connections": {
+    "inlet":  ["DWV-FIXTURE-OUTLET", "DWV-TRAPARM"],
+    "outlet": ["DWV-TRAPARM", "DWV-WYE-INLET"]
+  },
+
+  "sizing_rule": {
+    "trigger": "fixture_type",
+    "lookup": "IPC_TABLE_709.1",
+    "minimum_diameter_mm": 38,
+    "default_diameter_mm": 50
+  },
+
+  "placement_rules": [
+    { "rule": "slope_required", "direction": "outlet_to_stack", "min_slope_mm_per_m": 20.8, "code_ref": "IPC 2021 §704.1" },
+    { "rule": "max_trap_arm_length_m", "value": 1.5, "code_ref": "IPC 2021 §909.1" },
+    { "rule": "accessible_for_cleaning", "note": "Must be reachable without removing fixed structure" }
+  ],
+
+  "sequence": {
+    "must_precede": ["DWV-BRANCH-PIPE", "FLOOR-FINISH"],
+    "must_follow":  ["ROUGH-FRAMING", "DWV-ROUGH-IN"]
+  },
+
+  "clearances": {
+    "service_access_mm": { "front": 300, "sides": 150, "below": 200 }
+  },
+
+  "code_refs": ["IPC 2021 §1002", "IPC 2021 §709"],
+  "flexibility": "hard",
+  "status": "PROVEN",
+  "proven_contexts": ["residential_multistorey", "commercial_office"]
+}
+```
+
+Every field has a purpose the routing engine can act on:
+- `geometry.ports` tell the engine where pipes connect and in what direction — so it can chain components together into a valid assembly
+- `connections` tell the engine what can legally connect to each port — so it can validate the assembly
+- `sizing_rule` tells the engine how to select the right variant of this component based on the load it carries
+- `placement_rules` are the code constraints encoded as machine-readable rules — slope requirements, max run lengths, access requirements
+- `sequence` is the constructability layer — what must be in place before this component can go in, and what this component blocks until it's in
+- `clearances` feed directly into the zone graph as space reservations
+
+### Library Organisation
+
+The library is structured in four top-level disciplines, each with categories and sub-categories:
+
+```
+library/
+├── plumbing_dwv/
+│   ├── traps/           P-trap, drum trap, floor drain trap
+│   ├── fittings/        Wye, san-tee, combo, cleanout, reducer, coupling
+│   ├── stacks/          Stack base, stack extension, stack termination
+│   └── venting/         Re-vent tee, air admittance valve, vent termination
+│
+├── plumbing_supply/
+│   ├── valves/          Ball valve, gate valve, angle stop, PRV, check valve, backflow preventer
+│   ├── fittings/        Tee, elbow, reducer, union, coupling
+│   ├── equipment/       Expansion tank, water hammer arrestor, recirculation pump
+│   └── fixtures/        (stub connection geometry only — fixture library is separate)
+│
+├── hvac/
+│   ├── duct_fittings/   Reducer, elbow (radius + square-with-vanes), tee, wye, cap
+│   ├── terminal/        Diffuser, grille, register, VAV box, fan coil unit stub
+│   ├── dampers/         Fire damper, smoke damper, combination, balancing, motorised
+│   ├── equipment/       AHU stub, VRF indoor head, VRF outdoor unit, ERV, condensate pump
+│   └── accessories/     Flexible connector, access door, test port, insulation spec
+│
+├── sprinkler/
+│   ├── heads/           Pendant, upright, sidewall, extended coverage, concealed
+│   ├── fittings/        Tee, cross, elbow, coupling, reducer, drop nipple, flexible drop
+│   ├── control/         Floor control station assembly, inspector's test, riser check valve
+│   └── support/         Seismic brace (lateral + longitudinal), hanger
+│
+└── electrical/
+    ├── conduit/         EMT, rigid, flexible — with bend radii and fill tables
+    ├── boxes/           Junction box, pull box, outlet box (by cubic inch capacity)
+    ├── devices/         Receptacle, switch, GFCI, AFCI, tamper-resistant
+    ├── panelboard/      Panel assembly (with breaker schedule schema)
+    ├── equipment/       Disconnect, motor starter, VFD stub
+    └── grounding/       Ground rod, bonding jumper, grounding electrode conductor
+```
+
+### Variant Handling
+
+Most components exist in multiple sizes. A ball valve exists in 3/4", 1", 1.25", 1.5", 2", 2.5", 3", and 4" variants. Rather than one library entry per size, each entry carries a size series and a sizing rule that tells the routing engine which variant to select based on the pipe diameter it's connecting to:
+
+```json
+"size_series": [20, 25, 32, 40, 50, 65, 80, 100],
+"sizing_rule": { "match": "upstream_pipe_diameter", "rounding": "up_to_nearest" }
+```
+
+The routing engine selects the variant at placement time, not at library authoring time. This keeps the library compact and the variant logic in one place.
+
+### Required vs. Optional vs. Jurisdiction-Variable Components
+
+Not every component is required in every context. The library carries a placement condition for each component:
+
+- **Required** — code mandates this component in this location (e.g., P-trap at every fixture, fire damper at every rated penetration). Adri places these automatically.
+- **Default** — industry standard in this context but code allows exceptions (e.g., balancing damper at every HVAC branch). Adri places these with a flag that the engineer can remove with justification.
+- **Jurisdiction-variable** — required in some codes but not others (e.g., AFCI protection scope, air admittance valve acceptance). Adri places or omits based on the jurisdiction selected for the project, and flags all jurisdiction-variable decisions in the output.
+- **Engineer-specified** — no automatic placement; engineer places manually (e.g., specific valve types at equipment, isolation strategy choices).
+
+### The Library as a Living Asset
+
+The component library is not a static catalogue — it is one of the compound assets that grows with use. When an engineer overrides a component selection (different valve type, different fitting geometry, different sizing), that override is logged against the context: building type, jurisdiction, system, reason. Over time the library learns which components are actually specified for which contexts, and the default selections improve.
+
+When a new jurisdiction is added to the system, the jurisdiction-variable components for that jurisdiction are flagged as unverified until a project in that jurisdiction has been run and reviewed. Verified jurisdiction variants are marked as PROVEN in that context.
+
+### Connection to the Zone Graph
+
+When the routing engine places a component from the library, it does three things simultaneously:
+
+1. **Reserves the body envelope** in the zone graph — the physical space the component occupies
+2. **Reserves the installation envelope** in the zone graph — the clearance needed to install it
+3. **Reserves the service access clearance** — the permanent clear space needed for future maintenance
+
+All three are distinct. A VRF outdoor unit's body is 900×350×700mm. Its installation envelope is larger — equipment needs to be lifted and positioned. Its service clearance is 36" on the service face permanently. The zone graph must carry all three, or a route that looks valid on screen will fail on site.
+
+---
+
 ## What Adri Is Building
 
 A system that derives intelligent conclusions and implementation mapping plans from models that are completely geometrically modeled but missing semantic data. The output is not a compliance report — it is a complete annotated building map with routed systems resolved to the assembly level: every pipe sized, every fitting placed, every valve located, every clearance verified. The output tells a tradesperson what to order, where it goes, how it connects, and what has to be in place first.
