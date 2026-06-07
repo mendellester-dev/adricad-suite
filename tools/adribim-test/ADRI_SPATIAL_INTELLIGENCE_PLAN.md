@@ -223,8 +223,206 @@ Operates on the zone graph. System-specific rules per discipline. Gravity constr
 
 ---
 
+---
+
+## The Assembly Detail Layer
+
+Once routing paths are determined, each path must be resolved into a complete assembly — not just pipe centerlines or duct centrelines, but every component required to make the installation real and buildable. This is the layer that connects the routing map to site installation. A tradesperson should be able to read an Adri output and know exactly what components to order, where each one goes, how it connects to the next, and what has to be in place first.
+
+**The core principle:** every routing path is an ordered sequence of components, each with geometry, clearance requirements, connection type, and installation sequence constraints. The routing engine must account for fitting geometry as part of the route — a 90° elbow on a 6" duct takes roughly 9" of radius to execute; that space must exist in the zone graph before the turn is placed.
+
+---
+
+### Sizing Transition Logic
+
+Each discipline has a direction in which sizing changes along the routing tree. Adri must propagate sizing changes and place the correct transition fittings automatically.
+
+| Discipline | Direction | Rule |
+|-----------|-----------|------|
+| DWV (sanitary drain) | Gets larger downstream toward stack | Aggregated fixture unit load determines pipe size at each segment; wye or tee-wye at each junction |
+| Plumbing supply | Gets smaller away from main | Branch tee + reducer at each split; size driven by fixture unit demand remaining downstream |
+| Sprinkler | Gets smaller as branch serves fewer heads | Reducing coupling or reducing tee at each step down; NFPA 13 pipe schedule governs |
+| HVAC duct | Gets smaller at each branch takeoff | Reducing transition fitting at each split; CFM demand drives each segment size |
+| Electrical conduit | Fixed per circuit, plus fill capacity | New conduit run starts where fill capacity is reached; junction box required at splice |
+
+---
+
+### Plumbing — Sanitary Drainage (DWV)
+
+The assembly components required along every DWV routing path, in addition to the pipe itself:
+
+**At every fixture connection:**
+- P-trap (integral or field-installed depending on fixture type)
+- Trap arm connecting P-trap to drain branch — minimum 1/4" per foot slope toward stack
+- Cleanout access where trap arm exceeds 5ft or changes direction
+
+**At every branch junction:**
+- Wye fitting (not sanitary tee on horizontal lines — flow dynamics require wye geometry)
+- Reducing fitting where branch meets a larger-diameter run
+
+**At every change in direction on horizontal runs:**
+- Two 45° fittings in sequence (not a single 90°) to maintain flow velocity
+- Cleanout at each aggregate direction change if horizontal run exceeds 50ft total
+
+**Vent connections:**
+- Re-vent or wet vent from each fixture trap arm to vent stack
+- Air admittance valve where individual branch venting is impractical (code-jurisdiction-dependent)
+- Vent stack continuous to roof termination — minimum 6" above roof, 10ft from any air intake
+
+**At stack base:**
+- Sanitary combination Y with 1/8 bend — not a standard tee; this fitting redirects the vertical stack flow to horizontal
+- Cleanout at stack base (required by code)
+
+**Slope annotation on every horizontal segment** — slope in mm/m or inches/foot must be carried on every segment and verified as achievable given the vertical distance available between fixture outlet elevation and stack connection elevation.
+
+---
+
+### Plumbing — Pressurized Supply (Hot and Cold)
+
+**At building entry / riser base:**
+- Pressure reducing valve (PRV) if incoming pressure exceeds 80 psi
+- Main shutoff valve (ball valve, full bore)
+- Backflow preventer where required by jurisdiction
+- Pressure gauge downstream of PRV
+
+**At every branch junction:**
+- Reducing tee matching main and branch diameters
+- Branch isolation ball valve — allows individual branch isolation without shutting down the floor
+
+**At every fixture connection:**
+- Angle stop or stop valve at each fixture supply (hot and cold separately)
+- Flexible supply lines from stop valve to fixture
+- On hot water lines: expansion tank at water heater if closed system (PRV creates closed system)
+
+**On hot water distribution:**
+- Hot water recirculation return line (separate pipe, smaller diameter) to prevent cold-water wait at fixtures — runs parallel to supply back to water heater
+- Check valve on recirculation return to prevent reverse flow
+- Recirculation pump at water heater (timed or demand-activated)
+
+**Isolation and access:**
+- Shutoff valve at each floor riser takeoff
+- Union fittings at water heater connections (allows equipment replacement without cutting pipe)
+- Vacuum breakers at hose bibs and irrigation connections
+
+---
+
+### Sprinkler
+
+**At every sprinkler head:**
+- Head selected by type: pendant (most common — drops below pipe), upright (points up, used in exposed structure), sidewall (projects from wall, used where ceiling routing is obstructed)
+- Escutcheon plate concealing rough ceiling opening
+- On flexible drops: listed flexible sprinkler hose assembly (allows head repositioning without rerouting branch line)
+- On seismic zones: flexible drop required within 12" of head
+
+**At every branch line:**
+- Branch line runs perpendicular to cross main
+- Arm-over fitting where branch line meets cross main
+- Branch line sized per NFPA 13 pipe schedule (number of heads remaining on that branch determines diameter)
+- End-of-line test/drain valve (inspector's test connection — simulates single head flow for alarm testing)
+
+**At cross main:**
+- Reducing tee or cross fitting at each branch line takeoff
+- Cross main sized cumulatively from end to riser — largest at riser connection
+- End of main drain valve at low point
+
+**At riser (per floor zone):**
+- Floor control station assembly: alarm check valve + water motor alarm or pressure switch + pressure gauge on each side + inspector's test + main drain valve
+- Riser check valve (prevents backflow between zones)
+- Tamper switch on control valve (sends signal to fire alarm panel if valve is closed)
+
+**Penetrations through rated assemblies:**
+- Listed fire-rated sleeve at every wall and floor penetration
+- Escutcheon ring on exposed side
+- Seismic bracing at intervals per NFPA 13 (lateral and longitudinal, typically every 40ft and 80ft respectively)
+
+---
+
+### HVAC
+
+**At every duct size transition:**
+- Reducing transition fitting (flat-top reducer for ceiling-mounted runs to maintain consistent ceiling elevation; symmetric reducer for exposed runs)
+- Balancing damper at each branch takeoff — allows airflow adjustment during commissioning
+
+**At every 90° turn:**
+- Radius elbow preferred (minimum bend radius = 1.5× duct width)
+- Square elbow with turning vanes where space prevents radius elbow — turning vanes are required, not optional, to maintain pressure
+- Fitting geometry must be solved as part of the route: a 24"×12" duct requires a minimum 24" turning radius — this space must be verified in the zone graph before the turn is placed
+
+**At every fire-rated wall/floor penetration:**
+- Listed fire/smoke damper (combination damper where both fire and smoke control required)
+- Access door immediately adjacent to damper — required by code for testing and inspection, typically 12"×12" minimum
+- Damper must be accessible from finished space — this drives where dampers can and cannot be placed
+
+**At supply terminations:**
+- Diffuser or register box (size and type driven by CFM per space and throw requirement)
+- Flexible duct connector (6"–12" of flexible duct between rigid duct and diffuser box) — prevents vibration transmission and allows minor positional adjustment
+
+**At equipment connections:**
+- *VRF indoor unit:* refrigerant liquid line + suction line (line set sized per manufacturer for distance and elevation change), condensate drain with trap and slope to collection point, power supply disconnect within sight of unit, flexible electrical whip
+- *VRF outdoor unit:* refrigerant line set from indoor units, power disconnect within 50ft and within sight, vibration isolation pads under unit, minimum clearances on all sides per manufacturer (typically 12"–24" sides, 36" service access face), condensate drain if heat pump reversing cycle
+- *ERV / AHU:* ductwork connection with flexible connector, outdoor air intake with damper and screen, exhaust air outlet with damper, condensate drain with P-trap (trap depth = 1" per inch of static pressure), filter access door, power disconnect
+
+**Condensate drainage:**
+- Condensate lines slope minimum 1/8" per foot to drain
+- P-trap required on every condensate drain line before connection to drain system (prevents sewer gas ingress)
+- Condensate pump where gravity drain is impossible (common in ceiling-mounted units)
+- Clean-out access at condensate manifold
+
+---
+
+### Electrical
+
+**At every conduit run:**
+- Pull box at every point where total bends in a conduit run exceed 360° — prevents wire damage during pull
+- Junction box at every wire splice — no in-wall splices outside of a listed enclosure
+- Conduit fill verified at every segment (NEC Table C): adding a circuit to an existing conduit requires checking whether fill capacity allows it
+
+**At panel connections:**
+- Circuit breaker sized per wire ampacity and load (not just load — breaker must protect the wire, not the device)
+- Panel schedule completed for every panel: circuit number, load description, breaker size, wire size, phase assignment
+- Neutral and ground bars separated in service entrance and main panels (combined in subpanels only where permitted)
+- Feeder conductors sized for voltage drop as well as ampacity — long feeder runs in tall buildings require upsizing to keep drop under 3%
+
+**Required devices by location:**
+- GFCI protection at all wet locations (bathrooms, kitchens within 6ft of sink, laundry, outdoor, rooftop, mechanical rooms)
+- AFCI protection at all bedroom circuits and in jurisdictions requiring whole-dwelling AFCI
+- Tamper-resistant receptacles in residential units (required by NEC in all residential since 2008)
+
+**At equipment connections:**
+- Dedicated circuit for every large appliance (refrigerator, dishwasher, washing machine, microwave)
+- Equipment disconnect within sight and within 50ft of motor-driven equipment (HVAC units, pumps, elevators)
+- Disconnect must be lockable in the open position
+- Flexible conduit or listed flexible cable ("whip") at final connection to equipment — prevents vibration transmission and allows equipment movement for service
+
+**Grounding:**
+- Grounding electrode system at service entrance (ground rod, building steel, water pipe — all bonded)
+- Equipment grounding conductor in every conduit run with circuit conductors
+- Bonding jumper at every metal water pipe, gas pipe, and structural steel within reach of electrical equipment
+
+---
+
+### Assembly Geometry in the Routing Engine
+
+The routing engine must carry fitting geometry as real 3D volumes, not just pipe centerline offsets. The minimum clearances Adri must enforce:
+
+| Component | Clearance Required |
+|-----------|-------------------|
+| 90° duct elbow (radius) | 1.5× duct width minimum radius |
+| 90° duct elbow (square with vanes) | Duct width + 6" each direction |
+| Pipe elbow (1.5D radius) | 1.5× nominal pipe diameter |
+| Sprinkler head (pendant) | 18" below ceiling minimum, 4" from side wall |
+| VRF outdoor unit service access | 36" on service face, 12" on all other sides |
+| Electrical panel working space | 36" deep × panel width × 6.5ft tall (NEC 110.26) |
+| Floor control station (sprinkler) | 36" in front, 18" each side |
+| Fire/smoke damper | Access door within 12" on accessible side |
+| Condensate pump | Accessible from finished ceiling or service panel |
+
+These clearances must be represented in the zone graph as reservations — when a fitting is placed, its clearance volume is marked as occupied so no other system can route through it.
+
+---
+
 ## What Adri Is Building
 
-A system that derives intelligent conclusions and implementation mapping plans from models that are completely geometrically modeled but missing semantic data. The output is not a compliance report — it is an annotated building map that tells an MEP engineer where systems can run, what they'll cost to install, and what decisions need to be made before routing can proceed.
+A system that derives intelligent conclusions and implementation mapping plans from models that are completely geometrically modeled but missing semantic data. The output is not a compliance report — it is a complete annotated building map with routed systems resolved to the assembly level: every pipe sized, every fitting placed, every valve located, every clearance verified. The output tells a tradesperson what to order, where it goes, how it connects, and what has to be in place first.
 
 The intelligence is in the inference. The moat is in what the inference gets better at over time.
